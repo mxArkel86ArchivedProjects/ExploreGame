@@ -1,0 +1,6 @@
+-=-=-=-= output =-=-=-=-=-
+
+[collision]
+14,15,18,19
+
+[levelprop]
