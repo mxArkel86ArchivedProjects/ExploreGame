@@ -46,9 +46,9 @@ public class Rect {
         return new Rect(this.x-i, this.y-i, this.width+2*i, this.height+2*i);
     }
 
-	public static Rect fromPoints(int x1, int y1, int x2, int y2) {
-		int x_ = Math.min(x1, x2);
-		int y_ = Math.min(y1, y2);
+	public static Rect fromPoints(double x1, double y1, double x2, double y2) {
+		double x_ = Math.min(x1, x2);
+		double y_ = Math.min(y1, y2);
 		return new Rect(x_, y_, Math.abs(x1 - x2), Math.abs(y1 - y2));
 	}
 }
