@@ -24,4 +24,8 @@ public class Globals {
 	public static final double DASH_PERCENT_FALLOFF_SPEED = 0.04;
 	public static final double BULLET_GRAV_CONST = 0.0001;
 	public static final int DASH_DELAY = 100;
+	// LIGHTING
+	public static final double FLASHLIGHT_FOV = 0.8;
+	public static final int INNER_RADIUS = 250;
+	public static final int FLASHLIGHT_RANGE = 500;
 }

@@ -141,6 +141,7 @@ public class Application extends JPanel {
 	boolean EDIT_MODE = false;
 	boolean CLIP_MODE = false;
 	boolean OVERLAY_MODE = false;
+	boolean SHADOWS_MODE = true;
 
 	GraphicsConfiguration gconfig = null;
 
@@ -205,6 +206,9 @@ public class Application extends JPanel {
 		}));
 		debug_opts.add(new Pair<String,Runnable>("Toggle Light", () -> {
 			LIGHT_MODE = !LIGHT_MODE;
+		}));
+		debug_opts.add(new Pair<String,Runnable>("Toggle Shadows", () -> {
+			SHADOWS_MODE = !SHADOWS_MODE;
 		}));
 		debug_opts.add(new Pair<String,Runnable>("Toggle Overlay", () -> {
 			OVERLAY_MODE = !OVERLAY_MODE;
@@ -347,106 +351,92 @@ public class Application extends JPanel {
 	}
 
 	private Shape LightMask(Graphics2D dispG, Graphics g) {
-		double fov = 0.54;
 		double dx = 360 * Math.cos(looking_angle);
 		double dy = 360 * Math.sin(looking_angle);
-		double dist = 400;
 		// double r = 200;
-		double radius = 200;
 		double small_radius = 40;
-		double lamp_dist = 140;
 
 		Area shape = new Area();
-		Polygon light = new Polygon();
 
-		Point center = new Point(PLAYER_SCREEN_LOC.x + PLAYER_SCREEN_LOC.width / 2,
-				PLAYER_SCREEN_LOC.y + PLAYER_SCREEN_LOC.height / 2);
-		double angle_1 = looking_angle - fov;
-		double angle_2 = looking_angle + fov;
-		light.addPoint((int) (center.x + small_radius * Math.cos(angle_1)),
-				(int) (center.y + small_radius * Math.sin(angle_1)));
+		if (LIGHT_MODE) {
+			Polygon light = new Polygon();
 
-		light.addPoint((int) (center.x + dx + dist * Math.cos(angle_1)),
-				(int) (center.y + dy + dist * Math.sin(angle_1)));
-		light.addPoint((int) (center.x + dx + dist * Math.cos(angle_2)),
-				(int) (center.y + dy + dist * Math.sin(angle_2)));
+			Point center = new Point(PLAYER_SCREEN_LOC.x + PLAYER_SCREEN_LOC.width / 2,
+					PLAYER_SCREEN_LOC.y + PLAYER_SCREEN_LOC.height / 2);
+			double angle_1 = looking_angle - Globals.FLASHLIGHT_FOV;
+			double angle_2 = looking_angle + Globals.FLASHLIGHT_FOV;
+			light.addPoint((int) (center.x + small_radius * Math.cos(angle_1)),
+					(int) (center.y + small_radius * Math.sin(angle_1)));
 
-		light.addPoint((int) (center.x + small_radius * Math.cos(angle_2)),
-				(int) (center.y + small_radius * Math.sin(angle_2)));
+			light.addPoint((int) (center.x + dx + Globals.FLASHLIGHT_RANGE * Math.cos(angle_1)),
+					(int) (center.y + dy + Globals.FLASHLIGHT_RANGE * Math.sin(angle_1)));
+			light.addPoint((int) (center.x + dx + Globals.FLASHLIGHT_RANGE * Math.cos(angle_2)),
+					(int) (center.y + dy + Globals.FLASHLIGHT_RANGE * Math.sin(angle_2)));
 
-		shape.add(new Area(light));
-		Ellipse2D e2d = new Ellipse2D.Double(center.x - radius, center.y - radius, radius * 2, radius * 2);
-		shape.add(new Area(e2d));
+			light.addPoint((int) (center.x + small_radius * Math.cos(angle_2)),
+					(int) (center.y + small_radius * Math.sin(angle_2)));
 
-		//radial gradient
-		RadialGradientPaint rgp = new RadialGradientPaint(new Point2D.Double(center.x, center.y), (float) radius,
-				new float[] { 0.0f, 1.0f },
-				new Color[] { Color.BLACK, new Color(0, 0, 0, 0) });
+			shape.add(new Area(light));
+			Ellipse2D e2d = new Ellipse2D.Double(center.x - Globals.INNER_RADIUS, center.y - Globals.INNER_RADIUS,
+					Globals.INNER_RADIUS * 2, Globals.INNER_RADIUS * 2);
+			shape.add(new Area(e2d));
 
-		dispG.setPaint(rgp);
-		dispG.fill(new Ellipse2D.Double(center.getX() - radius, center.getY() - radius, radius * 2, radius * 2));
+			//radial gradient
+			RadialGradientPaint rgp = new RadialGradientPaint(new Point2D.Double(center.x, center.y),
+					(float) Globals.INNER_RADIUS,
+					new float[] { 0.0f, 0.5f, 1.0f },
+					new Color[] { Color.BLACK, new Color(0, 0, 0, 220), new Color(0, 0, 0, 0) });
 
-		//flashlight
-		GradientPaint gp = new GradientPaint(new Point2D.Double(center.x, center.y), Color.BLACK,
-				new Point2D.Double(center.x + dist * Math.cos(looking_angle),
-						center.y + dist * Math.sin(looking_angle)),
-				new Color(0, 0, 0, 0));
-		dispG.setPaint(gp);
-		dispG.fill(light);
+			dispG.setPaint(rgp);
+			dispG.fill(new Ellipse2D.Double(center.getX() - Globals.INNER_RADIUS, center.getY() - Globals.INNER_RADIUS,
+					Globals.INNER_RADIUS * 2, Globals.INNER_RADIUS * 2));
 
-		dispG.setPaint(null);
-		// shape.add(new Area());
-		// {
-		// for (LevelWall o : walls) {
-		// LevelWall p = (LevelWall) o;
-		// if (p.getAsset().equals("lamp")) {
-		// Rect rect = SchemUtilities.schemToLocalZ(o, PLAYER_SCREEN_LOC, location,
-		// o.getZ(), GRIDSIZE);
-		// if (inScreenSpace(rect.extend(Math.exp(7)))) {
-		// Shape ellipse = new Ellipse2D.Double((int) (rect.getX() - lamp_dist),
-		// (int) (rect.getY() - lamp_dist),
-		// (int) (rect.getWidth() + 2 * lamp_dist), (int) (rect.getWidth() + 2 *
-		// lamp_dist));
-		// shape.add(new Area(ellipse));
-		// }
+			//flashlight
+			GradientPaint gp = new GradientPaint(new Point2D.Double(center.x, center.y), Color.BLACK,
+					new Point2D.Double(center.x + Globals.FLASHLIGHT_RANGE * Math.cos(looking_angle),
+							center.y + Globals.FLASHLIGHT_RANGE * Math.sin(looking_angle)),
+					new Color(0, 0, 0, 0));
+			dispG.setPaint(gp);
+			dispG.fill(light);
 
-		// }
+			dispG.setPaint(null);
+		} else {
+			dispG.setBackground(Color.BLACK);
+			dispG.clearRect(0, 0, this.getWidth(), this.getHeight());
+			shape.add(new Area(new Rectangle2D.Float(0,0,this.getWidth(), this.getHeight())));
+		}
 
-		// }
-		// }
-		
-		for (LevelWall w : walls) {
-			Rect rect = SchemUtilities.schemToLocalZ(w, PLAYER_SCREEN_LOC, location, 0, GRIDSIZE);
-			if (inScreenSpace(rect)) {
-				Shape s = new Rectangle2D.Float((int) rect.getX(), (int) rect.getY(), (int) rect.getWidth(),
-						(int) rect.getHeight());
-				Polygon o = new Polygon();
+		if (SHADOWS_MODE) {
+			for (LevelWall w : walls) {
+				Rect rect = SchemUtilities.schemToLocalZ(w, PLAYER_SCREEN_LOC, location, 0, GRIDSIZE);
+				if (inScreenSpace(rect)) {
+					Shape s = new Rectangle2D.Float((int) rect.getX(), (int) rect.getY(), (int) rect.getWidth(),
+							(int) rect.getHeight());
+					Polygon o = new Polygon();
 
-				double d2 = 800;
-				
-				Point PLAYER_CENTER = new Point(PLAYER_SCREEN_LOC.x + PLAYER_SCREEN_LOC.width / 2,
-						PLAYER_SCREEN_LOC.y + PLAYER_SCREEN_LOC.height / 2);
+					double d2 = 800;
 
-				double overall_angle = (Math.atan2(PLAYER_CENTER.y - (rect.getY() + rect.getHeight() / 2),
-						rect.getX() + rect.getWidth() / 2 - PLAYER_CENTER.x) + Math.PI * 2) % (Math.PI * 2);
-				double angle_tl = (Math.atan2(PLAYER_CENTER.y - rect.getY(),
-						rect.getX() - PLAYER_CENTER.x) + Math.PI * 2) % (Math.PI * 2);
-				double angle_br = (Math.atan2(PLAYER_CENTER.y - (rect.getY() + rect.getHeight()),
-						rect.getX() + rect.getWidth() - PLAYER_CENTER.x) + Math.PI * 2) % (Math.PI * 2);
-				double angle_tr = (Math.atan2(PLAYER_CENTER.y - rect.getY(),
-						rect.getX() + rect.getWidth() - PLAYER_CENTER.x) + Math.PI * 2) % (Math.PI * 2);
-				double angle_bl = (Math.atan2(PLAYER_CENTER.y - (rect.getY() + rect.getHeight()),
-						rect.getX() - PLAYER_CENTER.x) + Math.PI * 2) % (Math.PI * 2);
+					Point PLAYER_CENTER = new Point(PLAYER_SCREEN_LOC.x + PLAYER_SCREEN_LOC.width / 2,
+							PLAYER_SCREEN_LOC.y + PLAYER_SCREEN_LOC.height / 2);
 
-				debug_vals.set(0, overall_angle);
+					double overall_angle = (Math.atan2(PLAYER_CENTER.y - (rect.getY() + rect.getHeight() / 2),
+							rect.getX() + rect.getWidth() / 2 - PLAYER_CENTER.x) + Math.PI * 2) % (Math.PI * 2);
+					double angle_tl = (Math.atan2(PLAYER_CENTER.y - rect.getY(),
+							rect.getX() - PLAYER_CENTER.x) + Math.PI * 2) % (Math.PI * 2);
+					double angle_br = (Math.atan2(PLAYER_CENTER.y - (rect.getY() + rect.getHeight()),
+							rect.getX() + rect.getWidth() - PLAYER_CENTER.x) + Math.PI * 2) % (Math.PI * 2);
+					double angle_tr = (Math.atan2(PLAYER_CENTER.y - rect.getY(),
+							rect.getX() + rect.getWidth() - PLAYER_CENTER.x) + Math.PI * 2) % (Math.PI * 2);
+					double angle_bl = (Math.atan2(PLAYER_CENTER.y - (rect.getY() + rect.getHeight()),
+							rect.getX() - PLAYER_CENTER.x) + Math.PI * 2) % (Math.PI * 2);
 
-				//double buff = 0;
+					int buff2 = 18;
+					int buff3 = -3;
 
-				for (Integer buff : new Integer[] { 0}) {
 					// start points
 					if (angle_br >= 0 && angle_br < Math.PI / 2) {
-						o.addPoint((int) (rect.getX() + rect.getWidth() - buff),
-								(int) (rect.getY() + rect.getHeight() - buff));
+						o.addPoint((int) (rect.getX() + rect.getWidth() - buff3),
+								(int) (rect.getY() + rect.getHeight() - buff3));
 
 						o.addPoint((int) (rect.getX() + rect.getWidth() + d2 * Math.cos(angle_br)),
 								(int) (rect.getY() + rect.getHeight() - d2 * Math.sin(angle_br)));
@@ -456,7 +446,7 @@ public class Application extends JPanel {
 
 					}
 					if (angle_tr >= Math.PI / 2 && angle_tr < Math.PI) {
-						o.addPoint((int) (rect.getX() + rect.getWidth() - buff), (int) (rect.getY() + buff));
+						o.addPoint((int) (rect.getX() + rect.getWidth() - buff3), (int) (rect.getY() + buff3));
 
 						o.addPoint((int) (rect.getX() + rect.getWidth() + d2 * Math.cos(angle_tr)),
 								(int) (rect.getY() - d2 * Math.sin(angle_tr)));
@@ -466,7 +456,7 @@ public class Application extends JPanel {
 
 					}
 					if (angle_tl >= Math.PI && angle_tl < Math.PI * 3 / 2) {
-						o.addPoint((int) (rect.getX() + buff), (int) (rect.getY() + buff));
+						o.addPoint((int) (rect.getX() + buff3), (int) (rect.getY() + buff3));
 
 						o.addPoint((int) (rect.getX() + d2 * Math.cos(angle_tl)),
 								(int) (rect.getY() - d2 * Math.sin(angle_tl)));
@@ -475,7 +465,7 @@ public class Application extends JPanel {
 						g.fillOval((int) (rect.getX()), (int) (rect.getY()), 5, 5);
 					}
 					if (angle_bl >= Math.PI * 3 / 2 && angle_bl < Math.PI * 2) {
-						o.addPoint((int) (rect.getX() + buff), (int) (rect.getY() + rect.getHeight() - buff));
+						o.addPoint((int) (rect.getX() + buff3), (int) (rect.getY() + rect.getHeight() - buff3));
 
 						o.addPoint((int) (rect.getX() + d2 * Math.cos(angle_bl)),
 								(int) (rect.getY() + rect.getHeight() - d2 * Math.sin(angle_bl)));
@@ -489,7 +479,7 @@ public class Application extends JPanel {
 						o.addPoint((int) (rect.getX() + d2 * Math.cos(angle_tl)),
 								(int) (rect.getY() - d2 * Math.sin(angle_tl)));
 
-						o.addPoint((int) (rect.getX() + buff), (int) (rect.getY() + buff));
+						o.addPoint((int) (rect.getX() + buff3), (int) (rect.getY() + buff3));
 
 						g.setColor(Color.CYAN);
 						g.fillRect((int) (rect.getX()), (int) (rect.getY()), 5, 5);
@@ -498,7 +488,7 @@ public class Application extends JPanel {
 						o.addPoint((int) (rect.getX() + d2 * Math.cos(angle_bl)),
 								(int) (rect.getY() + rect.getHeight() - d2 * Math.sin(angle_bl)));
 
-						o.addPoint((int) (rect.getX() + buff), (int) (rect.getY() + rect.getHeight() - buff));
+						o.addPoint((int) (rect.getX() + buff3), (int) (rect.getY() + rect.getHeight() - buff3));
 						g.setColor(Color.MAGENTA);
 						g.fillRect((int) (rect.getX()), (int) (rect.getY() + rect.getHeight()), 5, 5);
 					}
@@ -506,8 +496,8 @@ public class Application extends JPanel {
 						o.addPoint((int) (rect.getX() + rect.getWidth() + d2 * Math.cos(angle_br)),
 								(int) (rect.getY() + rect.getHeight() - d2 * Math.sin(angle_br)));
 
-						o.addPoint((int) (rect.getX() + rect.getWidth() - buff),
-								(int) (rect.getY() + rect.getHeight() - buff));
+						o.addPoint((int) (rect.getX() + rect.getWidth() - buff3),
+								(int) (rect.getY() + rect.getHeight() - buff3));
 
 						g.setColor(Color.PINK);
 						g.fillRect((int) (rect.getX() + rect.getWidth()), (int) (rect.getY() + rect.getHeight()), 5, 5);
@@ -516,79 +506,81 @@ public class Application extends JPanel {
 						o.addPoint((int) (rect.getX() + rect.getWidth() + d2 * Math.cos(angle_tr)),
 								(int) (rect.getY() - d2 * Math.sin(angle_tr)));
 
-						o.addPoint((int) (rect.getX() + rect.getWidth() - buff), (int) (rect.getY() + buff));
+						o.addPoint((int) (rect.getX() + rect.getWidth() - buff3), (int) (rect.getY() + buff3));
 
 						g.setColor(Color.WHITE);
 						g.fillRect((int) (rect.getX() + rect.getWidth()), (int) (rect.getY()), 5, 5);
 					}
+
 					// Center points
 					if (angle_bl > Math.PI / 2 && angle_bl < Math.PI && angle_br > 0 && angle_br < Math.PI / 2) {
-						o.addPoint((int) (rect.getX() + buff), (int) (rect.getY() + buff));
-						o.addPoint((int) (rect.getX() + rect.getWidth() - buff),
-								(int) (rect.getY() + buff));
+						o.addPoint((int) (rect.getX() + buff2), (int) (rect.getY() + buff2));
+						o.addPoint((int) (rect.getX() + rect.getWidth() - buff2),
+								(int) (rect.getY() + buff2));
 					}
 					if (angle_bl > Math.PI / 2 && angle_bl < Math.PI && angle_tr > Math.PI / 2 && angle_tr < Math.PI) {
-						o.addPoint((int) (rect.getX() + buff), (int) (rect.getY() + buff));
+						o.addPoint((int) (rect.getX() + buff2), (int) (rect.getY() + buff2));
 					}
 					if (angle_tr > Math.PI / 2 && angle_tr < Math.PI && angle_br > Math.PI
 							&& angle_br < Math.PI * 3 / 2) {
-						o.addPoint((int) (rect.getX() + buff), (int) (rect.getY() + rect.getHeight() - buff));
-						o.addPoint((int) (rect.getX() + buff),
-								(int) (rect.getY() + buff));
+						o.addPoint((int) (rect.getX() + buff2), (int) (rect.getY() + rect.getHeight() - buff2));
+						o.addPoint((int) (rect.getX() + buff2),
+								(int) (rect.getY() + buff2));
 					}
 					if (angle_tr > Math.PI && angle_tr < Math.PI * 3 / 2 && angle_br > Math.PI
 							&& angle_br < Math.PI * 3 / 2) {
-						o.addPoint((int) (rect.getX() + buff), (int) (rect.getY() + rect.getHeight() - buff));
+						o.addPoint((int) (rect.getX() + buff2), (int) (rect.getY() + rect.getHeight() - buff2));
 					}
 					if (angle_tl > Math.PI && angle_tl < Math.PI * 3 / 2 && angle_tr > Math.PI * 3 / 2
 							&& angle_tr < Math.PI * 2) {
-						o.addPoint((int) (rect.getX() + rect.getWidth() - buff),
-								(int) (rect.getY() + rect.getHeight() - buff));
-						o.addPoint((int) (rect.getX() + buff),
-								(int) (rect.getY() + rect.getHeight() - buff));
+						o.addPoint((int) (rect.getX() + rect.getWidth() - buff2),
+								(int) (rect.getY() + rect.getHeight() - buff2));
+						o.addPoint((int) (rect.getX() + buff2),
+								(int) (rect.getY() + rect.getHeight() - buff2));
 					}
 					if (angle_tr > Math.PI * 3 / 2 && angle_tr < Math.PI * 2 && angle_bl > Math.PI * 3 / 2
 							&& angle_bl < Math.PI * 2) {
-						o.addPoint((int) (rect.getX() + rect.getWidth() - buff),
-								(int) (rect.getY() + rect.getHeight() - buff));
+						o.addPoint((int) (rect.getX() + rect.getWidth() - buff2),
+								(int) (rect.getY() + rect.getHeight() - buff2));
 					}
 					if (angle_tl > 0 && angle_tl < Math.PI / 2 && angle_br > Math.PI * 3 / 2
 							&& angle_br < Math.PI * 2) {
-						o.addPoint((int) (rect.getX() + rect.getWidth() - buff),
-								(int) (rect.getY() + buff));
-						o.addPoint((int) (rect.getX() + rect.getWidth() - buff),
-								(int) (rect.getY() + rect.getHeight() - buff));
+						o.addPoint((int) (rect.getX() + rect.getWidth() - buff2),
+								(int) (rect.getY() + buff2));
+						o.addPoint((int) (rect.getX() + rect.getWidth() - buff2),
+								(int) (rect.getY() + rect.getHeight() - buff2));
 					}
 					if (angle_tl > 0 && angle_tl < Math.PI / 2 && angle_br > 0 && angle_br < Math.PI / 2) {
-						o.addPoint((int) (rect.getX() + rect.getWidth() - buff),
-								(int) (rect.getY() + buff));
+						o.addPoint((int) (rect.getX() + rect.getWidth() - buff2),
+								(int) (rect.getY() + buff2));
 					}
 
 					shape.subtract(new Area(o));
+
 				}
 			}
-		}
 
-		dispG.setPaint(null);
-		for (LevelWall wall : walls) {
-			Rect rect = SchemUtilities.schemToLocalZ(wall, PLAYER_SCREEN_LOC, location, wall.getZ(), GRIDSIZE);
-			if (inScreenSpace(rect)) {
-				Rectangle2D re = new Rectangle2D.Double(rect.getX(), rect.getY(), rect.getWidth(),
-						rect.getHeight());
-				Shape s = (Shape) re;
+			dispG.setPaint(null);
+			for (LevelWall wall : walls) {
+				Rect rect = SchemUtilities.schemToLocalZ(wall, PLAYER_SCREEN_LOC, location, wall.getZ(), GRIDSIZE);
+				if (inScreenSpace(rect)) {
+					Rectangle2D re = new Rectangle2D.Double(rect.getX(), rect.getY(), rect.getWidth(),
+							rect.getHeight());
+					Shape s = (Shape) re;
 
-				// if(shape.contains(new Point2D.Double(rect.getX(), rect.getY()))||
-				// shape.contains(new Point2D.Double(rect.getX(),
-				// rect.getY()+rect.getHeight()))||
-				// shape.contains(new Point2D.Double(rect.getX()+rect.getWidth(),
-				// rect.getY()+rect.getHeight()))||
-				// shape.contains(new Point2D.Double(rect.getX()+rect.getWidth(),
-				// rect.getY()))){
-				// shape.add(new Area(s));
-				// }
-				if (shape.intersects(re)) {
+					// if(shape.contains(new Point2D.Double(rect.getX(), rect.getY()))||
+					// shape.contains(new Point2D.Double(rect.getX(),
+					// rect.getY()+rect.getHeight()))||
+					// shape.contains(new Point2D.Double(rect.getX()+rect.getWidth(),
+					// rect.getY()+rect.getHeight()))||
+					// shape.contains(new Point2D.Double(rect.getX()+rect.getWidth(),
+					// rect.getY()))){
+					// shape.add(new Area(s));
+					// }
+					if (shape.intersects(re)) {
 
-					shape.add(new Area(s));
+						shape.add(new Area(s));
+					}
 				}
 			}
 		}
@@ -726,7 +718,7 @@ public class Application extends JPanel {
 		g.setFont(DEBUG_SELECT_TEXT);
 		int text_height = g.getFontMetrics(DEBUG_SELECT_TEXT).getAscent();
 
-		final int TOTAL_HEIGHT = text_height * debug_vals.size() + 2*VERT_MID_SPACING * (debug_vals.size())
+		final int TOTAL_HEIGHT = text_height * debug_opts.size() + VERT_MID_SPACING * (debug_opts.size())
 				+ 2 * VERT_SPACING;
 		final int TOTAL_WIDTH = debug_opts.stream()
 				.map(s -> g.getFontMetrics(DEBUG_SELECT_TEXT).stringWidth(s.getValue0()))
@@ -793,12 +785,13 @@ public class Application extends JPanel {
 		g.setBackground(Color.BLACK);
 		g.clearRect(0, 0, this.getWidth(), this.getHeight());
 
-		if (LIGHT_MODE) {
+		if (LIGHT_MODE || SHADOWS_MODE) {
 			dispG.setComposite(ac_def);
 			// DRAW MASK
 
 			Shape mask = LightMask(dispG, extraG);
 			dispG.setClip(mask);
+			
 			// dispG.setColor(new Color(0, 0, 0, 25));
 			// dispG.fillRect(0, 0, this.getWidth(), this.getHeight());
 
