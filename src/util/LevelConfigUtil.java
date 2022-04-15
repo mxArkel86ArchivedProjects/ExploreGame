@@ -27,23 +27,21 @@ public class LevelConfigUtil {
             for(Collider c : entry.app.newColliders){
                 w.write(String.format("%d,%d,%d,%d\n",(int)c.x, (int)c.y, (int)(c.x+c.width),(int)(c.y+c.height)));
             }
-            w.write("\n[levelprop]\n");
-            for(GameObject c : entry.app.newWalls){
-                if(c instanceof LevelWall){
-                    LevelWall p = (LevelWall)c;
-                    w.write(String.format("%s,%d,%d,%.3f\n",p.getAsset(), (int)c.x, (int)c.y, p.getZ()));
-                }
+            w.write("\n[walls]\n");
+            for (LevelWall p : entry.app.newWalls) {
+                    w.write(String.format("%s,%d,%d,%.3f\n", p.getAsset(), (int) p.x, (int) p.y, p.getZ()));
             }
-            // w.write("\n[colorrect]\n");
-            // for(GameObject c : entry.app.newProps){
-            //     if(c instanceof ColorRect){
-            //         ColorRect p = (ColorRect)c;
-            //         w.write(String.format("%s,%d,%d,%d,%d,%.3f\n",p.getColor(), (int)c.x, (int)c.y, (int)(c.x+c.width),(int)(c.y+c.height), p.getZ()));
-            //     }
-            // }
+            w.write("\n[tiles]\n");
+            for(LevelTile p : entry.app.newTiles){
+                    w.write(String.format("%s,%d,%d,%.3f\n",p.getAsset(), (int)p.x, (int)p.y, p.getZ()));
+                
+            }
+            
 
+            
             entry.app.newColliders.clear();
             entry.app.newWalls.clear();
+            entry.app.newTiles.clear();
             w.close();
             
         } catch (IOException e) {

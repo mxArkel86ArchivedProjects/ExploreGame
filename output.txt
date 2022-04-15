@@ -1,6 +1,16 @@
 -=-=-=-= output =-=-=-=-=-
 
 [collision]
+24,8,28,12
 
-[levelprop]
+[walls]
+img1,11,8,0.000
+img1,11,11,0.000
+img1,8,11,0.000
 
+[tiles]
+grass,20,8,0.000
+grass,16,8,0.000
+grass,12,8,0.000
+grass,8,8,0.000
+img1,8,8,0.000

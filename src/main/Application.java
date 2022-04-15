@@ -31,6 +31,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
@@ -48,6 +49,7 @@ import gameObjects.ResetBox;
 import inventory.Gun;
 import inventory.ItemAttributes;
 import inventory.Weapon;
+import util.AppAsset;
 import util.CollisionReturn;
 import util.CollisionUtil;
 import util.ImageImport;
@@ -82,7 +84,7 @@ public class Application extends JPanel {
 	 * GAME ASSETS
 	 */
 	public HashMap<String, Point> checkpoints = new HashMap<String, Point>();
-	public HashMap<String, BufferedImage> assets = new HashMap<>();
+	public HashMap<String, AppAsset> assets = new HashMap<>();
 	public HashMap<String, Color> colors = new HashMap<String, Color>();
 
 	/*
@@ -111,37 +113,25 @@ public class Application extends JPanel {
 	Point select_point_1 = new Point(0, 0);
 	boolean select_preview = true;
 
+	int asset_menu_index = 0;
+
 	/*
 	 * MISC
 	 */
-	boolean deathscreen = false;
-	boolean selectstage = false;
 	boolean typing = false;
 	String typing_str = "";
-
-	/*
-	 * ANIMATION VARIABLES
-	 */
-	boolean animation = false;
-	long animation_tick = 0;
-	long animation_time = 3000;
-	long sprint_tick = 0;
-	long dash_tick = 0;
-	long walk_tick = 0;
-	long dash_delay_tick = 0;
-	int player_anim = 0;
 
 	/*
 	 * GAME TOGGLES
 	 */
 	int debug_selection = 0;
-	double GRIDSIZE = Globals.GRIDSIZE;
 	boolean SHOW_GRID = true;
 	boolean LIGHT_MODE = true;
 	boolean EDIT_MODE = false;
 	boolean CLIP_MODE = false;
 	boolean OVERLAY_MODE = false;
 	boolean SHADOWS_MODE = true;
+	boolean SHOW_ASSETS_MENU = false;
 
 	GraphicsConfiguration gconfig = null;
 
@@ -175,10 +165,12 @@ public class Application extends JPanel {
 				}
 				String name = fileEntry.getName().substring(0, fileEntry.getName().indexOf("."));
 				BufferedImage img = ImageImport.getImage(fileEntry.getPath());
-
+				Size size = new Size(img.getWidth() / Globals.PIXELS_PER_GRID, img.getHeight() / Globals.PIXELS_PER_GRID);
 				assetSizes.put(name,
-						new Size(img.getWidth() / Globals.PIXELS_PER_GRID, img.getHeight() / Globals.PIXELS_PER_GRID));
-				assets.put(name, img);
+						size);
+
+				BufferedImage resize = ImageImport.resize(img, img.getWidth()/Globals.PIXELS_PER_GRID * Globals.PIXELS_RESIZE, img.getHeight()/Globals.PIXELS_PER_GRID * Globals.PIXELS_RESIZE);
+				assets.put(name, new AppAsset(resize, size));
 			}
 		}
 
@@ -201,6 +193,10 @@ public class Application extends JPanel {
 
 		levelUpdate();
 
+		debug_opts.add(new Pair<String,Runnable>("Show Assets Menu", () -> {
+			SHOW_ASSETS_MENU = true;
+			asset_menu_index = 0;
+		}));
 		debug_opts.add(new Pair<String,Runnable>("Toggle Grid", () -> {
 			SHOW_GRID = !SHOW_GRID;
 		}));
@@ -219,20 +215,19 @@ public class Application extends JPanel {
 		debug_opts.add(new Pair<String,Runnable>("Toggle Clip", () -> {
 			CLIP_MODE = !CLIP_MODE;
 		}));
+		debug_opts.add(new Pair<String,Runnable>("Save Level", () -> {
+			LevelConfigUtil.saveLevel();
+			levelUpdate();
+		}));
 	}
 
 	/*
 	 * BACKEND GAME CODE
 	 */
 	public void onTick() {
-		inputUpdate(true, typing, (!animation && !typing));
+		inputUpdate(true, typing, !typing);
 		if (entry.peripherals.mouse_state)
 			mouseDown(entry.peripherals.mousePos());
-
-		deathscreen = ScreenAnimation.DeathScreen_Enabled(animation_tick);
-
-		if (deathscreen)
-			return;
 
 		if (typing) {
 			if (entry.peripherals.keysTypedB()) {
@@ -241,40 +236,40 @@ public class Application extends JPanel {
 			return;
 		}
 
-		if (animation) {
-			double step_x = Globals.DASH_STEP * intent.getX();
-			double step_y = Globals.DASH_STEP * intent.getY();
-			if (entry.tick - dash_tick < Globals.DASH_DURATION) {
+		// if (animation) {
+		// 	double step_x = Globals.DASH_STEP * intent.getX();
+		// 	double step_y = Globals.DASH_STEP * intent.getY();
+		// 	if (entry.tick - dash_tick < Globals.DASH_DURATION) {
 
-				CollisionReturn collided = playerCollision(step_x, -step_y);
-				if (collided.x_collision && collided.y_collision) {
-					location.x += collided.disp_x;
-					location.y -= collided.disp_y;
-					dash_tick = 0;
-					animation = false;
-				} else if (collided.x_collision && !collided.y_collision) {
-					location.x += collided.disp_x;
-					location.y -= step_y;
-				} else if (!collided.x_collision && collided.y_collision) {
-					location.x += step_x;
-					location.y -= collided.disp_y;
-				}
+		// 		CollisionReturn collided = playerCollision(step_x, -step_y);
+		// 		if (collided.x_collision && collided.y_collision) {
+		// 			location.x += collided.disp_x;
+		// 			location.y -= collided.disp_y;
+		// 			dash_tick = 0;
+		// 			animation = false;
+		// 		} else if (collided.x_collision && !collided.y_collision) {
+		// 			location.x += collided.disp_x;
+		// 			location.y -= step_y;
+		// 		} else if (!collided.x_collision && collided.y_collision) {
+		// 			location.x += step_x;
+		// 			location.y -= collided.disp_y;
+		// 		}
 
-			} else {
-				animation = false;
-			}
-		} else
+		// 	} else {
+		// 		animation = false;
+		// 	}
+		// } else
 			playerCollisionAndMovementCode();
 
-		for (ResetBox b : resetboxes) {
-			Rect r = SchemUtilities.schemToLocal(b, location, GRIDSIZE);
-			boolean res = CollisionUtil.staticCollision(PLAYER_SCREEN_LOC, r);
-			if (res) {
-				deathscreen = true;
-				animation_tick = entry.tick;
-				setPlayerPosFromSchem(checkpoints.get(b.checkpoint));
-			}
-		}
+		// for (ResetBox b : resetboxes) {
+		// 	Rect r = SchemUtilities.schemToLocal(b, location, Globals.GRIDSIZE);
+		// 	boolean res = CollisionUtil.staticCollision(PLAYER_SCREEN_LOC, r);
+		// 	if (res) {
+		// 		deathscreen = true;
+		// 		animation_tick = entry.tick;
+		// 		setPlayerPosFromSchem(checkpoints.get(b.checkpoint));
+		// 	}
+		// }
 	}
 
 	void RawGame(Graphics2D g) {
@@ -285,14 +280,14 @@ public class Application extends JPanel {
 		if (SHOW_GRID) {
 			for (int x1 = (int) TOPLEFT_BOUND.x; x1 < BOTTOMRIGHT_BOUND.x; x1++) {
 				for (int y1 = (int) TOPLEFT_BOUND.y; y1 < BOTTOMRIGHT_BOUND.y; y1++) {
-					Point p = new Point(x1 * GRIDSIZE - location.x, y1 * GRIDSIZE - location.y);
+					Point p = new Point(x1 * Globals.GRIDSIZE - location.x, y1 * Globals.GRIDSIZE - location.y);
 
-					Rect r1 = new Rect((int) p.x, (int) p.y, (int) (GRIDSIZE), (int) (GRIDSIZE));
+					Rect r1 = new Rect((int) p.x, (int) p.y, (int) (Globals.GRIDSIZE), (int) (Globals.GRIDSIZE));
 					if (inScreenSpace(r1)) {
 						g.drawLine((int) Math.floor(p.x), (int) Math.floor(p.y), (int) Math.floor(p.x),
-								(int) Math.floor(p.y + GRIDSIZE));
+								(int) Math.floor(p.y + Globals.GRIDSIZE));
 
-						g.drawLine((int) Math.floor(p.x), (int) Math.floor(p.y), (int) Math.floor(p.x + GRIDSIZE),
+						g.drawLine((int) Math.floor(p.x), (int) Math.floor(p.y), (int) Math.floor(p.x + Globals.GRIDSIZE),
 								(int) Math.floor(p.y));
 					}
 				}
@@ -301,7 +296,14 @@ public class Application extends JPanel {
 
 		for (LevelTile o : tiles) {
 			// if (Math.ceil(o.getZ()) <= 0) {
-			Rect r = SchemUtilities.schemToLocalZ(o, PLAYER_SCREEN_LOC, location, o.getZ(), GRIDSIZE);
+			Rect r = SchemUtilities.schemToLocalZ(o, PLAYER_SCREEN_LOC, location, o.getZ(), Globals.GRIDSIZE);
+			if (inScreenSpace(r))
+				paintLevelTile(g, (LevelTile) o);
+			// }
+		}
+		for (LevelTile o : newTiles){
+			// if (Math.ceil(o.getZ()) <= 0) {
+			Rect r = SchemUtilities.schemToLocalZ(o, PLAYER_SCREEN_LOC, location, o.getZ(), Globals.GRIDSIZE);
 			if (inScreenSpace(r))
 				paintLevelTile(g, (LevelTile) o);
 			// }
@@ -309,14 +311,14 @@ public class Application extends JPanel {
 
 		for (LevelWall o : walls) {
 			// if (Math.ceil(o.getZ()) <= 0) {
-			Rect r = SchemUtilities.schemToLocalZ(o, PLAYER_SCREEN_LOC, location, o.getZ(), GRIDSIZE);
+			Rect r = SchemUtilities.schemToLocalZ(o, PLAYER_SCREEN_LOC, location, o.getZ(), Globals.GRIDSIZE);
 			if (inScreenSpace(r))
 				paintLevelWall(g, (LevelWall) o);
 			// }
 		}
 
 		for (LevelWall o : newWalls) {
-			Rect r = SchemUtilities.schemToLocalZ(o, PLAYER_SCREEN_LOC, location, o.getZ(), GRIDSIZE);
+			Rect r = SchemUtilities.schemToLocalZ(o, PLAYER_SCREEN_LOC, location, o.getZ(), Globals.GRIDSIZE);
 			if (inScreenSpace(r))
 				paintLevelWall(g, (LevelWall) o);
 		}
@@ -325,14 +327,14 @@ public class Application extends JPanel {
 		g.setStroke(new BasicStroke(4));
 
 		for (Collider o : colliders) {
-			Rect r = SchemUtilities.schemToLocal(o, location, GRIDSIZE);
+			Rect r = SchemUtilities.schemToLocal(o, location, Globals.GRIDSIZE);
 			if (inScreenSpace(r))
 				g.drawRect((int) r.getX(), (int) r.getY(), (int) r.getWidth(), (int) r.getHeight());
 		}
 
 		g.setColor(Color.ORANGE);
 		for (Collider o : newColliders) {
-			Rect r = SchemUtilities.schemToLocal(o, location, GRIDSIZE);
+			Rect r = SchemUtilities.schemToLocal(o, location, Globals.GRIDSIZE);
 
 			if (inScreenSpace(r))
 				g.drawRect((int) r.getX(), (int) r.getY(), (int) r.getWidth(), (int) r.getHeight());
@@ -408,7 +410,7 @@ public class Application extends JPanel {
 
 		if (SHADOWS_MODE) {
 			for (LevelWall w : walls) {
-				Rect rect = SchemUtilities.schemToLocalZ(w, PLAYER_SCREEN_LOC, location, 0, GRIDSIZE);
+				Rect rect = SchemUtilities.schemToLocalZ(w, PLAYER_SCREEN_LOC, location, 0, Globals.GRIDSIZE);
 				if (inScreenSpace(rect)) {
 					Shape s = new Rectangle2D.Float((int) rect.getX(), (int) rect.getY(), (int) rect.getWidth(),
 							(int) rect.getHeight());
@@ -562,21 +564,12 @@ public class Application extends JPanel {
 
 			dispG.setPaint(null);
 			for (LevelWall wall : walls) {
-				Rect rect = SchemUtilities.schemToLocalZ(wall, PLAYER_SCREEN_LOC, location, wall.getZ(), GRIDSIZE);
+				Rect rect = SchemUtilities.schemToLocalZ(wall, PLAYER_SCREEN_LOC, location, wall.getZ(), Globals.GRIDSIZE);
 				if (inScreenSpace(rect)) {
 					Rectangle2D re = new Rectangle2D.Double(rect.getX(), rect.getY(), rect.getWidth(),
 							rect.getHeight());
 					Shape s = (Shape) re;
 
-					// if(shape.contains(new Point2D.Double(rect.getX(), rect.getY()))||
-					// shape.contains(new Point2D.Double(rect.getX(),
-					// rect.getY()+rect.getHeight()))||
-					// shape.contains(new Point2D.Double(rect.getX()+rect.getWidth(),
-					// rect.getY()+rect.getHeight()))||
-					// shape.contains(new Point2D.Double(rect.getX()+rect.getWidth(),
-					// rect.getY()))){
-					// shape.add(new Area(s));
-					// }
 					if (shape.intersects(re)) {
 
 						shape.add(new Area(s));
@@ -589,7 +582,7 @@ public class Application extends JPanel {
 
 	void drawUI(Graphics2D g) {
 		for (ResetBox b : resetboxes) {
-			Rect r = SchemUtilities.schemToLocal(b, location, GRIDSIZE);
+			Rect r = SchemUtilities.schemToLocal(b, location, Globals.GRIDSIZE);
 			if (inScreenSpace(r))
 				g.drawRect((int) Math.floor(r.getX()), (int) Math.floor(r.getY()), (int) Math.floor(r.getWidth()),
 						(int) Math.floor(r.getHeight()));
@@ -597,10 +590,11 @@ public class Application extends JPanel {
 
 		if (EDIT_MODE) {
 			g.setColor(Color.RED);
-			Point schem = SchemUtilities.schemPointFromFramePos(entry.peripherals.mousePos(), location, GRIDSIZE);
-			Point newpoint1 = SchemUtilities.schemToLocalPoint(schem, location, GRIDSIZE);
-			BufferedImage img = assets.get(selectasset);
-			g.drawRect((int) newpoint1.x, (int) newpoint1.y, (int) img.getWidth(), (int) img.getHeight());
+			Point schem = SchemUtilities.schemPointFromFramePos(entry.peripherals.mousePos(), location, Globals.GRIDSIZE);
+			Point newpoint1 = SchemUtilities.schemToLocalPoint(schem, location, Globals.GRIDSIZE);
+			AppAsset a = assets.get(selectasset);
+			BufferedImage img = a.source;
+			g.drawRect((int) newpoint1.x, (int) newpoint1.y, (int) (a.size.getWidth()*Globals.GRIDSIZE), (int) (a.size.getHeight()*Globals.GRIDSIZE));
 		}
 
 		if (EDIT_MODE)
@@ -608,7 +602,7 @@ public class Application extends JPanel {
 		else
 			g.setColor(Color.WHITE);
 		Point mouse = entry.peripherals.mousePos();
-		Point schem_mouse = SchemUtilities.schemPointFromFramePos(mouse, location, GRIDSIZE);
+		Point schem_mouse = SchemUtilities.schemPointFromFramePos(mouse, location, Globals.GRIDSIZE);
 		int z = 3;
 		g.fillOval((int) mouse.x - z, (int) mouse.y - z, 2 * z, 2 * z);
 
@@ -631,57 +625,16 @@ public class Application extends JPanel {
 					(int) LEVEL_SCREEN_SPACE.getWidth(), (int) LEVEL_SCREEN_SPACE.getHeight());
 		}
 
-		// if (selectstage == true) {
-		// Point p1 = SchemUtilities.schemToLocalPoint(select_point_1, location,
-		// GRIDSIZE);
-		// Point p2 = SchemUtilities.schemToLocalPoint(
-		// SchemUtilities.schemPointFromFramePos(entry.peripherals.mousePos(), location,
-		// GRIDSIZE),
-		// location, GRIDSIZE);
-		// Rect r = new Rect(p1, p2);
-
-		// if (selecttype == 0) {
-		// g.setColor(Color.RED);
-		// g.setStroke(new BasicStroke(4));
-		// g.drawRect((int) r.getX(), (int) r.getY(), (int) r.getWidth(), (int)
-		// r.getHeight());
-		// } else if (selecttype == 1) {
-		// if (assets.containsKey(selectasset))
-		// g.drawImage(assets.get(selectasset), (int) r.getX(), (int) r.getY(),
-		// (int) r.getWidth(),
-		// (int) r.getHeight(), null);
-		// else {
-		// g.setColor(Color.RED);
-		// g.fillRect((int) r.getX(), (int) r.getY(), (int) r.getWidth(), (int)
-		// r.getHeight());
-		// }
-		// } else if (selecttype == 2) {
-		// if (colors.containsKey(selectcolor)) {
-		// g.setColor(colors.get(selectcolor));
-		// g.fillRect((int) r.getX(), (int) r.getY(), (int) r.getWidth(),
-		// (int) r.getHeight());
-		// } else {
-		// g.setColor(Color.RED);
-		// g.fillRect((int) r.getX(), (int) r.getY(), (int) r.getWidth(), (int)
-		// r.getHeight());
-		// }
-		// }
-		// }
-
 		if (typing) {
 			g.setFont(AMMO_TEXT);
 			g.setColor(Color.RED);
 			g.drawString(typing_str, 40, 40);
 		}
 
-		if (deathscreen) {
-			ScreenAnimation.DeathScreen_Graphics(g, animation_tick, this.getWidth(), this.getHeight());
-		}
 
 		g.setColor(Color.RED);
 		g.fillRect(20, getHeight() - 60, 200, 10);
-		// g.setColor(new Color(255, (int) (100 + (120) * sprint_val), 0));
-		// g.fillRect(20, getHeight() - 40, (int) (200 * sprint_val), 10);
+
 
 		g.setStroke(new BasicStroke(2));
 		g.setColor(Color.BLACK);
@@ -711,40 +664,74 @@ public class Application extends JPanel {
 	}
 
 	void drawDebug(Graphics2D g) {
-		final int VERT_SPACING = 20;
-		final int VERT_MID_SPACING = 6;
-		final int SIDE_SPACING = 20;
 
-		g.setFont(DEBUG_SELECT_TEXT);
-		int text_height = g.getFontMetrics(DEBUG_SELECT_TEXT).getAscent();
+		if (SHOW_ASSETS_MENU) {
+			ArrayList<String> keys = new ArrayList<String>(assets.keySet());
 
-		final int TOTAL_HEIGHT = text_height * debug_opts.size() + VERT_MID_SPACING * (debug_opts.size())
-				+ 2 * VERT_SPACING;
-		final int TOTAL_WIDTH = debug_opts.stream()
-				.map(s -> g.getFontMetrics(DEBUG_SELECT_TEXT).stringWidth(s.getValue0()))
-				.max(Comparator.naturalOrder()).get() + 2 * SIDE_SPACING;
-		Rect bound = Rect.fromPoints(this.getWidth() - 20 - TOTAL_WIDTH, 20, this.getWidth() - 20,
-				20 + TOTAL_HEIGHT);
+			final int BUFFER = 50;
+			final int BETWEEN_IMG = 10;
+			int img_size = (int) (this.getWidth() - 2 * BUFFER - (Globals.ASSET_MENU_HORIZONTAL + 1) * BETWEEN_IMG) / Globals.ASSET_MENU_HORIZONTAL;
+			g.setColor(new Color(80,80,80,200));
+			g.fillRect(BUFFER, BUFFER, this.getWidth() - 2 * BUFFER, this.getHeight() - 2 * BUFFER);
+			for (int y = 0; y <= (int) (assets.size() / Globals.ASSET_MENU_HORIZONTAL); y++) {
+				for (int x = 0; x < Globals.ASSET_MENU_HORIZONTAL; x++) {
+					
+					int index = y * Globals.ASSET_MENU_HORIZONTAL + x;
+					if(index>=assets.size())
+						break;
 
-		g.setColor(Color.DARK_GRAY);
-		g.fillRect((int) bound.getX(), (int) bound.getY(), (int) bound.getWidth(), (int) bound.getHeight());
+					int posx = BUFFER + x * (img_size) + (x+1)*BETWEEN_IMG;
+					int posy = BUFFER + y * (img_size) + (y+1)*2*BETWEEN_IMG;
+					BufferedImage img = assets.get(keys.get(index)).source;
 
-		g.setColor(Color.LIGHT_GRAY);
-		g.fillRect((int) bound.x, (int) (bound.y + VERT_SPACING + (debug_selection) * (text_height + VERT_MID_SPACING)),
-				(int) bound.width, (int) text_height + 8);
+					if(asset_menu_index==index){
+						g.setColor(Color.ORANGE);
+						g.setStroke(new BasicStroke(8));
+						g.fillRect(posx-4, posy-4, img_size+8, img_size+8);
+					}
+					g.drawImage(img, posx, posy, img_size, img_size, null);
+					g.setColor(Color.WHITE);
+					String msg = keys.get(index);
+					int height = g.getFontMetrics().getAscent();
+					int width = (int) g.getFontMetrics().getStringBounds(msg, g).getWidth();
+					g.drawString(msg, posx+img_size/2-width/2, posy+img_size+10+height);
+				}
+			}
+		} else {
+			final int VERT_SPACING = 20;
+			final int VERT_MID_SPACING = 6;
+			final int SIDE_SPACING = 20;
 
-		g.setColor(Color.WHITE);
+			g.setFont(DEBUG_SELECT_TEXT);
+			int text_height = g.getFontMetrics(DEBUG_SELECT_TEXT).getAscent();
 
-		for (int i = 0; i < debug_opts.size(); i++) {
-			Pair<String, Runnable> pair = debug_opts.get(i);
-			
-			String name = pair.getValue0();
-			Runnable func = pair.getValue1();
-			
-			g.drawString(name, (int) (bound.x + SIDE_SPACING),
-					(int) (bound.y + (i + 1) * text_height + (i) * VERT_MID_SPACING + VERT_SPACING));
+			final int TOTAL_HEIGHT = text_height * debug_opts.size() + VERT_MID_SPACING * (debug_opts.size())
+					+ 2 * VERT_SPACING;
+			final int TOTAL_WIDTH = debug_opts.stream()
+					.map(s -> g.getFontMetrics(DEBUG_SELECT_TEXT).stringWidth(s.getValue0()))
+					.max(Comparator.naturalOrder()).get() + 2 * SIDE_SPACING;
+			Rect bound = Rect.fromPoints(this.getWidth() - 20 - TOTAL_WIDTH, 20, this.getWidth() - 20,
+					20 + TOTAL_HEIGHT);
+
+			g.setColor(Color.DARK_GRAY);
+			g.fillRect((int) bound.getX(), (int) bound.getY(), (int) bound.getWidth(), (int) bound.getHeight());
+
+			g.setColor(Color.LIGHT_GRAY);
+			g.fillRect((int) bound.x,
+					(int) (bound.y + VERT_SPACING + (debug_selection) * (text_height + VERT_MID_SPACING)),
+					(int) bound.width, (int) text_height + 8);
+
+			g.setColor(Color.WHITE);
+
+			for (int i = 0; i < debug_opts.size(); i++) {
+				Pair<String, Runnable> pair = debug_opts.get(i);
+
+				String name = pair.getValue0();
+
+				g.drawString(name, (int) (bound.x + SIDE_SPACING),
+						(int) (bound.y + (i + 1) * text_height + (i) * VERT_MID_SPACING + VERT_SPACING));
+			}
 		}
-
 	}
 	/*
 	 * PAINT METHOD
@@ -766,14 +753,14 @@ public class Application extends JPanel {
 		g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
 
 		LEVEL_SCREEN_SPACE = new Rect(
-				Math.max(0, (TOPLEFT_BOUND.x) * GRIDSIZE - location.x),
-				Math.max(0, (TOPLEFT_BOUND.y) * GRIDSIZE - location.y),
-				MathUtil.min_(BOTTOMRIGHT_BOUND.x * GRIDSIZE - location.x,
-						getWidth() - TOPLEFT_BOUND.x * GRIDSIZE + location.x,
-						(BOTTOMRIGHT_BOUND.x - TOPLEFT_BOUND.x) * GRIDSIZE, getWidth()),
-				MathUtil.min_(BOTTOMRIGHT_BOUND.y * GRIDSIZE - location.y,
-						getHeight() - TOPLEFT_BOUND.y * GRIDSIZE + location.y,
-						(BOTTOMRIGHT_BOUND.y - TOPLEFT_BOUND.y) * GRIDSIZE, getHeight()));
+				Math.max(0, (TOPLEFT_BOUND.x) * Globals.GRIDSIZE - location.x),
+				Math.max(0, (TOPLEFT_BOUND.y) * Globals.GRIDSIZE - location.y),
+				MathUtil.min_(BOTTOMRIGHT_BOUND.x * Globals.GRIDSIZE - location.x,
+						getWidth() - TOPLEFT_BOUND.x * Globals.GRIDSIZE + location.x,
+						(BOTTOMRIGHT_BOUND.x - TOPLEFT_BOUND.x) * Globals.GRIDSIZE, getWidth()),
+				MathUtil.min_(BOTTOMRIGHT_BOUND.y * Globals.GRIDSIZE - location.y,
+						getHeight() - TOPLEFT_BOUND.y * Globals.GRIDSIZE + location.y,
+						(BOTTOMRIGHT_BOUND.y - TOPLEFT_BOUND.y) * Globals.GRIDSIZE, getHeight()));
 
 		Graphics2D dispG = (Graphics2D) display.getGraphics();
 		Graphics2D extraG = (Graphics2D) extra.getGraphics();
@@ -850,22 +837,32 @@ public class Application extends JPanel {
 	public void mouseClick(Point pos) {
 		if (EDIT_MODE) {
 			if (select_preview) {
-				select_point_1 = SchemUtilities.schemPointFromFramePos(pos, location, GRIDSIZE);
+				select_point_1 = SchemUtilities.schemPointFromFramePos(pos, location, Globals.GRIDSIZE);
 
 				if (selection_type == 1) {
-					BufferedImage img = assets.get(selectasset);
+					AppAsset a = assets.get(selectasset);
 					// else if(selecttype == 2) img = assets.get(selectcolor);
 
-					Rect r = new Rect(select_point_1.x, select_point_1.y, img.getWidth() / Globals.PIXELS_PER_GRID,
-							img.getHeight() / Globals.PIXELS_PER_GRID);
+					Rect r = new Rect(select_point_1.x, select_point_1.y, a.size.getWidth(),
+							a.size.getHeight());
 
 					LevelWall c = new LevelWall(r.getX(), r.getY(), r.getWidth(), r.getHeight(), 0.0f, selectasset);
 					newWalls.add(c);
-				} else if (selection_type == 0) {
-					BufferedImage img = assets.get(selectasset);
+				}
+				else if(selection_type==2){
+					AppAsset a = assets.get(selectasset);
+					// else if(selecttype == 2) img = assets.get(selectcolor);
 
-					Rect r = new Rect(select_point_1.x, select_point_1.y, img.getWidth() / Globals.PIXELS_PER_GRID,
-							img.getHeight() / Globals.PIXELS_PER_GRID);
+					Rect r = new Rect(select_point_1.x, select_point_1.y, a.size.getWidth(),
+							a.size.getHeight());
+
+					LevelTile c = new LevelTile(r.getX(), r.getY(), r.getWidth(), r.getHeight(), 0.0f, selectasset);
+					newTiles.add(c);
+				} else if (selection_type == 0) {
+					AppAsset a = assets.get(selectasset);
+
+					Rect r = new Rect(select_point_1.x, select_point_1.y, a.size.getWidth(),
+							a.size.getHeight());
 
 					Collider c = new Collider(r.getX(), r.getY(), r.getWidth(), r.getHeight());
 					newColliders.add(c);
@@ -921,29 +918,36 @@ public class Application extends JPanel {
 				entry.peripherals.typingEnable(typing);
 			}
 
-			if (entry.peripherals.KeyToggled(KeyEvent.VK_I)) {
-				if (select_val == debug_vals.size() - 1)
-					select_val = 0;
-				else
-					select_val++;
+			if (entry.peripherals.KeyToggled(KeyEvent.VK_RIGHT)) {
+				if(asset_menu_index<assets.size()-1)
+					asset_menu_index++;
 			}
-			if (entry.peripherals.KeyPressed(KeyEvent.VK_L)) {
-				double val = debug_vals.get(select_val);
-				debug_vals.set(select_val, val + 0.04);
-			} else if (entry.peripherals.KeyPressed(KeyEvent.VK_K)) {
-				double val = debug_vals.get(select_val);
-				debug_vals.set(select_val, val - 0.04);
+			if (entry.peripherals.KeyToggled(KeyEvent.VK_LEFT)) {
+				if(asset_menu_index>0)
+				asset_menu_index--;
 			}
 
 			if (entry.peripherals.KeyToggled(KeyEvent.VK_UP)) {
+				if (SHOW_ASSETS_MENU) {
+					if(asset_menu_index-Globals.ASSET_MENU_HORIZONTAL>0)
+						asset_menu_index -= Globals.ASSET_MENU_HORIZONTAL;
+				}else
 				if (debug_selection > 0)
 					debug_selection--;
 			} else if (entry.peripherals.KeyToggled(KeyEvent.VK_DOWN)) {
-				if (debug_selection < debug_opts.size() - 1)
+				if (SHOW_ASSETS_MENU) {
+					if(asset_menu_index+Globals.ASSET_MENU_HORIZONTAL<assets.size())
+						asset_menu_index += Globals.ASSET_MENU_HORIZONTAL;
+				}if (debug_selection < debug_opts.size() - 1)
 					debug_selection++;
 			}
 
 			if (entry.peripherals.KeyToggled(KeyEvent.VK_SPACE)) {
+				if (SHOW_ASSETS_MENU) {
+					selectasset = new ArrayList<String>(assets.keySet()).get(asset_menu_index);
+					SHOW_ASSETS_MENU = false;
+				}
+				else
 				debug_opts.get(debug_selection).getValue1().run();
 			}
 		}
@@ -991,45 +995,12 @@ public class Application extends JPanel {
 				intent = Vector.zero();
 			}
 
-			if (entry.peripherals.KeyToggled(KeyEvent.VK_X)) {
-				selectstage = false;
-			}
-
 			if (entry.peripherals.KeyToggled(KeyEvent.VK_B)) {
 				selection_type++;
-				if (selection_type == 2)
+				if (selection_type >= 3)
 					selection_type = 0;
 			}
 
-			if (entry.peripherals.KeyToggled(KeyEvent.VK_SHIFT)) {
-
-				if (dash_count > 0 && entry.tick - dash_delay_tick > Globals.DASH_DELAY) {
-					dash_delay_tick = entry.tick;
-					dash_count--;
-					dash_tick = entry.tick;
-					animation = true;
-				}
-			}
-
-			// if (entry.peripherals.KeyPressed(KeyEvent.VK_Z)) {
-			// sprint = true;
-			// if (sprint_val > 0)
-			// sprint_val -= Globals.SPRINT_DRAIN;
-			// sprint_tick = entry.tick;
-			// } else {
-			// sprint = false;
-			// if (sprint_tick + Globals.SPRINT_DELAY < entry.tick && sprint_val != 1) {
-			// if (sprint_val + Globals.SPRINT_REGEN > 1)
-			// sprint_val = 1;
-			// else
-			// sprint_val += Globals.SPRINT_REGEN;
-			// }
-			// }
-
-			if (entry.peripherals.KeyToggled(KeyEvent.VK_P)) {
-				LevelConfigUtil.saveLevel();
-				levelUpdate();
-			}
 			if (entry.peripherals.KeyToggled(KeyEvent.VK_U)) {
 				((Gun) weapon).mag = ItemAttributes.DevTek_Mag();
 			}
@@ -1073,7 +1044,7 @@ public class Application extends JPanel {
 			}
 
 			for (Collider c : colliders) {
-				Rect collider = SchemUtilities.schemToLocal(c, location, GRIDSIZE);
+				Rect collider = SchemUtilities.schemToLocal(c, location, Globals.GRIDSIZE);
 
 				for (int i = 0; i < bullets.size(); i++) {
 					Bullet b = bullets.get(i);
@@ -1113,16 +1084,16 @@ public class Application extends JPanel {
 		CollisionReturn colret = null;
 		List<Rect> objects = new ArrayList<>();
 		objects.addAll((List<Rect>) colliders.stream()
-				.map(c -> SchemUtilities.schemToLocal(c, location, GRIDSIZE))
+				.map(c -> SchemUtilities.schemToLocal(c, location, Globals.GRIDSIZE))
 				.filter(c -> inScreenSpace(c))
 				.collect(Collectors.toList()));
 		objects.addAll((List<Rect>) newColliders.stream()
-				.map(c -> SchemUtilities.schemToLocal(c, location, GRIDSIZE))
+				.map(c -> SchemUtilities.schemToLocal(c, location, Globals.GRIDSIZE))
 				.filter(c -> inScreenSpace(c))
 				.collect(Collectors.toList()));
 		// objects.addAll((List<Rect>) walls.stream()
 		// .filter(c -> c.getZ() == 0)
-		// .map(c -> SchemUtilities.schemToLocal(c, location, GRIDSIZE))
+		// .map(c -> SchemUtilities.schemToLocal(c, location, Globals.GRIDSIZE))
 		// .filter(c -> inScreenSpace(c))
 		// .collect(Collectors.toList()));
 
@@ -1162,6 +1133,8 @@ public class Application extends JPanel {
 		all.addAll(colliders.stream().map(c -> (Rect) c).collect(Collectors.toList()));
 		all.addAll(newColliders.stream().map(c -> (Rect) c).collect(Collectors.toList()));
 		all.addAll(newWalls.stream().map(c -> (Rect) c).collect(Collectors.toList()));
+		all.addAll(tiles.stream().map(c -> (Rect) c).collect(Collectors.toList()));
+		all.addAll(newTiles.stream().map(c -> (Rect) c).collect(Collectors.toList()));
 
 		for (Rect o : all) {
 			if (o.getX() < TOPLEFT_BOUND.x)
@@ -1179,8 +1152,8 @@ public class Application extends JPanel {
 	 * Move player given a SCHEMATIC coordinate
 	 */
 	void setPlayerPosFromSchem(Point p) {
-		location = new Point(p.getX() * GRIDSIZE - PLAYER_SCREEN_LOC.getX(),
-				p.getY() * GRIDSIZE - PLAYER_SCREEN_LOC.getY() - PLAYER_SCREEN_LOC.getHeight() / 2 - 1.5 * GRIDSIZE);
+		location = new Point(p.getX() * Globals.GRIDSIZE - PLAYER_SCREEN_LOC.getX(),
+				p.getY() * Globals.GRIDSIZE - PLAYER_SCREEN_LOC.getY() - PLAYER_SCREEN_LOC.getHeight() / 2 - 1.5 * Globals.GRIDSIZE);
 	}
 
 	/*
@@ -1191,7 +1164,7 @@ public class Application extends JPanel {
 	}
 
 	void paintColorRect(Graphics g, ColorRect rect, double depth) {
-		Rect r = SchemUtilities.schemToLocal(rect, location, GRIDSIZE);
+		Rect r = SchemUtilities.schemToLocal(rect, location, Globals.GRIDSIZE);
 		float c = 0.05f;
 		if (!entry.app.colors.containsKey(rect.getColor())) {
 			g.setColor(Color.RED);
@@ -1205,32 +1178,32 @@ public class Application extends JPanel {
 	}
 
 	void paintLevelWall(Graphics g, LevelWall p) {
-		Rect r = SchemUtilities.schemToLocalZ(p, PLAYER_SCREEN_LOC, location, p.getZ(), GRIDSIZE);
+		Rect r = SchemUtilities.schemToLocalZ(p, PLAYER_SCREEN_LOC, location, p.getZ(), Globals.GRIDSIZE);
 		if (!entry.app.assets.containsKey(p.getAsset())) {
 			g.setColor(Color.RED);
 			g.fillRect((int) Math.round(r.getX()), (int) Math.round(r.getY()), (int) r.getWidth(), (int) r.getHeight());
 		} else {
-			BufferedImage img = entry.app.assets.get(p.getAsset());
+			BufferedImage img = entry.app.assets.get(p.getAsset()).source;
 			g.drawImage(img, (int) Math.round(r.getX()), (int) Math.round(r.getY()), (int) r.getWidth(),
 					(int) r.getHeight(), null);
 		}
 	}
 
 	void paintLevelTile(Graphics g, LevelTile p) {
-		Rect r = SchemUtilities.schemToLocalZ(p, PLAYER_SCREEN_LOC, location, p.getZ(), GRIDSIZE);
+		Rect r = SchemUtilities.schemToLocalZ(p, PLAYER_SCREEN_LOC, location, p.getZ(), Globals.GRIDSIZE);
 		if (!entry.app.assets.containsKey(p.getAsset())) {
 			g.setColor(Color.RED);
 			g.fillRect((int) Math.round(r.getX()), (int) Math.round(r.getY()), (int) r.getWidth(), (int) r.getHeight());
 		} else {
-			BufferedImage img = entry.app.assets.get(p.getAsset());
+			BufferedImage img = entry.app.assets.get(p.getAsset()).source;
 			g.drawImage(img, (int) Math.round(r.getX()), (int) Math.round(r.getY()), (int) r.getWidth(),
 					(int) r.getHeight(), null);
 		}
 	}
 
 	BufferedImage resizeToGrid(BufferedImage img, double width, double height) {
-		return ImageImport.resize(img, (int) (width / GRIDSIZE * Globals.PIXELS_PER_GRID),
-				(int) (height / GRIDSIZE * Globals.PIXELS_PER_GRID));
+		return ImageImport.resize(img, (int) (width / Globals.GRIDSIZE * Globals.PIXELS_PER_GRID),
+				(int) (height / Globals.GRIDSIZE * Globals.PIXELS_PER_GRID));
 	}
 
 }
