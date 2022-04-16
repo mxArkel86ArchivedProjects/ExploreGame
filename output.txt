@@ -1,5 +1,8 @@
 -=-=-=-= output =-=-=-=-=-
 
+[collision]
+
+[walls]
 
 
 [tiles]

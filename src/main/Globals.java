@@ -5,8 +5,8 @@ public class Globals {
 	public static final double REFRESH_RATE = 60;
 	public static final int RENDER_WIDTH = 1920;
 	public static final int RENDER_HEIGHT = 1080;
-	public static int WINDOW_WIDTH = 1920;
-	public static int WINDOW_HEIGHT = 1080;
+	public static int WINDOW_WIDTH = 1280;
+	public static int WINDOW_HEIGHT = 720;
 	// IMAGE SETTINGS
 	public static final int PIXELS_PER_GRID = 64;
 	public static final int PIXELS_RESIZE = 32;
@@ -36,4 +36,5 @@ public class Globals {
 	public static final int INNER_RADIUS = 240;
 	public static final int FLASHLIGHT_RANGE = 540;
 	public static final int OVERLAY_MARKER_SIZE = 10;
+	public static final int LAMP_RADIUS = 180;
 }

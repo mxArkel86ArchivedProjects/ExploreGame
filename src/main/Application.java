@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.Map.Entry;
+import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
 import javax.swing.JPanel;
@@ -131,13 +132,14 @@ public class Application extends JPanel {
 	boolean OVERLAY_MODE = false;
 	boolean SHADOWS_MODE = true;
 	boolean SHOW_ASSETS_MENU = false;
+	boolean WALL_VISIBILITY = false;
 
 	GraphicsConfiguration gconfig = null;
 
 	List<Double> debug_vals = Arrays.asList(0.0, 0.0, 0.0);
 	int debug_val_selection = 0;
 
-	List<Pair<String, Runnable>> debug_opts = new ArrayList<>();
+	List<Triplet<String, Runnable, Callable<String>>> debug_opts = new ArrayList<>();
 
 	int select_val = 0;
 
@@ -198,31 +200,52 @@ public class Application extends JPanel {
 
 		levelUpdate();
 
-		debug_opts.add(new Pair<String, Runnable>("Show Assets Menu", () -> {
+		debug_opts.add(new Triplet<String, Runnable, Callable<String>>("Show Assets Menu", () -> {
 			SHOW_ASSETS_MENU = true;
 			asset_menu_index = 0;
+		}, () -> {
+			return "";
 		}));
-		debug_opts.add(new Pair<String, Runnable>("Toggle Grid", () -> {
+		debug_opts.add(new Triplet<String, Runnable, Callable<String>>("Toggle Grid [%s]", () -> {
 			SHOW_GRID = !SHOW_GRID;
+		}, () -> {
+			return String.valueOf(SHOW_GRID);
 		}));
-		debug_opts.add(new Pair<String, Runnable>("Toggle Light", () -> {
+		debug_opts.add(new Triplet<String, Runnable, Callable<String>>("Toggle Light [%s]", () -> {
 			LIGHT_MODE = !LIGHT_MODE;
+		}, () -> {
+			return String.valueOf(LIGHT_MODE);
 		}));
-		debug_opts.add(new Pair<String, Runnable>("Toggle Shadows", () -> {
+		debug_opts.add(new Triplet<String, Runnable, Callable<String>>("Toggle Shadows [%s]", () -> {
 			SHADOWS_MODE = !SHADOWS_MODE;
+		}, () -> {
+			return String.valueOf(SHADOWS_MODE);
 		}));
-		debug_opts.add(new Pair<String, Runnable>("Toggle Overlay", () -> {
+		debug_opts.add(new Triplet<String, Runnable, Callable<String>>("Toggle Overlay [%s]", () -> {
 			OVERLAY_MODE = !OVERLAY_MODE;
+		}, () -> {
+			return String.valueOf(OVERLAY_MODE);
 		}));
-		debug_opts.add(new Pair<String, Runnable>("Toggle Edit Mode", () -> {
+		debug_opts.add(new Triplet<String, Runnable, Callable<String>>("Toggle Edit Mode [%s]", () -> {
 			EDIT_MODE = !EDIT_MODE;
+		}, () -> {
+			return String.valueOf(EDIT_MODE);
 		}));
-		debug_opts.add(new Pair<String, Runnable>("Toggle Clip", () -> {
+		debug_opts.add(new Triplet<String, Runnable, Callable<String>>("Toggle Clip [%s]", () -> {
 			CLIP_MODE = !CLIP_MODE;
+		}, () -> {
+			return String.valueOf(CLIP_MODE);
 		}));
-		debug_opts.add(new Pair<String, Runnable>("Save Level", () -> {
+		debug_opts.add(new Triplet<String, Runnable, Callable<String>>("Wall Visibility [%s]", () -> {
+			WALL_VISIBILITY = !WALL_VISIBILITY;
+		}, () -> {
+			return String.valueOf(WALL_VISIBILITY);
+		}));
+		debug_opts.add(new Triplet<String, Runnable, Callable<String>>("Save Level", () -> {
 			LevelConfigUtil.saveLevel();
 			levelUpdate();
+		}, () -> {
+			return "";
 		}));
 	}
 
@@ -370,15 +393,30 @@ public class Application extends JPanel {
 		double dy = 360 * Math.sin(looking_angle);
 
 		double small_radius = 40;
+		Point center = new Point(PLAYER_SCREEN_LOC.x + PLAYER_SCREEN_LOC.width / 2,
+				PLAYER_SCREEN_LOC.y + PLAYER_SCREEN_LOC.height / 2);
 
-		Area visibility = new Area();
+				Area areas[] = new Area[] { new Area(), new Area() };
+				Triplet<Double, Double, Double> args[] = new Triplet[] {
+						new Triplet<Double, Double, Double>(0.0, -1.0, 0.0),
+						new Triplet<Double, Double, Double>(-4.0, 0.0, -7.5) };
+		
+				Area visibility = new Area();
+		
 
-		if (LIGHT_MODE) {
-			Polygon light = new Polygon();
+		if (!LIGHT_MODE) {
+			dispG.setBackground(Color.BLACK);
+			dispG.clearRect(0, 0, Globals.RENDER_WIDTH, Globals.RENDER_HEIGHT);
+		}
+		if (!SHADOWS_MODE) {
+			visibility.add(new Area(new Rectangle2D.Float(0, 0, Globals.RENDER_WIDTH, Globals.RENDER_HEIGHT)));
+		}
+		
+		if(!LIGHT_MODE && !SHADOWS_MODE)
+			return visibility;
 
-			Point center = new Point(PLAYER_SCREEN_LOC.x + PLAYER_SCREEN_LOC.width / 2,
-					PLAYER_SCREEN_LOC.y + PLAYER_SCREEN_LOC.height / 2);
-			double angle_1 = looking_angle - Globals.FLASHLIGHT_FOV;
+		Polygon light = new Polygon();
+		double angle_1 = looking_angle - Globals.FLASHLIGHT_FOV;
 			double angle_2 = looking_angle + Globals.FLASHLIGHT_FOV;
 			light.addPoint((int) (center.x + small_radius * Math.cos(angle_1)),
 					(int) (center.y + small_radius * Math.sin(angle_1)));
@@ -391,287 +429,317 @@ public class Application extends JPanel {
 			light.addPoint((int) (center.x + small_radius * Math.cos(angle_2)),
 					(int) (center.y + small_radius * Math.sin(angle_2)));
 
-			visibility.add(new Area(light));
 			Ellipse2D e2d = new Ellipse2D.Double(center.x - Globals.INNER_RADIUS, center.y - Globals.INNER_RADIUS,
 					Globals.INNER_RADIUS * 2, Globals.INNER_RADIUS * 2);
-			visibility.add(new Area(e2d));
+		
+		
+			if (LIGHT_MODE) {
 
-			RadialGradientPaint rgp = new RadialGradientPaint(new Point2D.Double(center.x, center.y),
-					(float) Globals.INNER_RADIUS,
-					new float[] { 0.0f, 0.5f, 1.0f },
-					new Color[] { Color.BLACK, new Color(0, 0, 0, 220), new Color(0, 0, 0, 0) });
+				RadialGradientPaint rgp = new RadialGradientPaint(new Point2D.Double(center.x, center.y),
+						(float) Globals.INNER_RADIUS,
+						new float[] { 0.0f, 0.5f, 1.0f },
+						new Color[] { Color.BLACK, new Color(0, 0, 0, 220), new Color(0, 0, 0, 0) });
 
-			dispG.setPaint(rgp);
-			dispG.fill(new Ellipse2D.Double(center.getX() - Globals.INNER_RADIUS, center.getY() - Globals.INNER_RADIUS,
-					Globals.INNER_RADIUS * 2, Globals.INNER_RADIUS * 2));
+				dispG.setPaint(rgp);
+				dispG.fill(
+						new Ellipse2D.Double(center.getX() - Globals.INNER_RADIUS, center.getY() - Globals.INNER_RADIUS,
+								Globals.INNER_RADIUS * 2, Globals.INNER_RADIUS * 2));
 
-			GradientPaint gp = new GradientPaint(new Point2D.Double(center.x, center.y), Color.BLACK,
-					new Point2D.Double(center.x + Globals.FLASHLIGHT_RANGE * Math.cos(looking_angle),
-							center.y + Globals.FLASHLIGHT_RANGE * Math.sin(looking_angle)),
-					new Color(0, 0, 0, 0));
-			dispG.setPaint(gp);
-			dispG.fill(light);
+				// GradientPaint gp = new GradientPaint(new Point2D.Double(center.x, center.y), Color.BLACK,
+				// 		new Point2D.Double(center.x + Globals.FLASHLIGHT_RANGE * Math.cos(looking_angle),
+				// 				center.y + Globals.FLASHLIGHT_RANGE * Math.sin(looking_angle)),
+				// 		new Color(0, 0, 0, 0));
+				// dispG.setPaint(gp);
+				// dispG.fill(light);
 
-			dispG.setPaint(null);
-		} else {
-			dispG.setBackground(Color.BLACK);
-			dispG.clearRect(0, 0, Globals.RENDER_WIDTH, Globals.RENDER_HEIGHT);
-			visibility.add(new Area(new Rectangle2D.Float(0, 0, Globals.RENDER_WIDTH, Globals.RENDER_HEIGHT)));
-		}
+				dispG.setPaint(null);
 
-		if (SHADOWS_MODE) {
-			Area areas[] = new Area[] { new Area(), new Area() };
-			Triplet<Double, Double, Double> args[] = new Triplet[] {
-					new Triplet<Double, Double, Double>(0.0, -1.0, 0.0),
-					new Triplet<Double, Double, Double>(-4.0, 0.0, -7.5) };
+			}
+			if (SHADOWS_MODE) {
+				visibility.add(new Area(e2d));
+				// visibility.add(new Area(light));
+			}
 
-			for (LevelWall w : walls) {
-				Rect rect = SchemUtilities.schemToLocalZ(w, PLAYER_SCREEN_LOC, location, 0, Globals.GRIDSIZE);
-				if (inScreenSpace(rect)) {
-					Point PLAYER_CENTER = new Point(PLAYER_SCREEN_LOC.x + PLAYER_SCREEN_LOC.width / 2,
-							PLAYER_SCREEN_LOC.y + PLAYER_SCREEN_LOC.height / 2);
+			if (SHADOWS_MODE) {
 
-					double overall_angle = (Math.atan2(PLAYER_CENTER.y - (rect.getY() + rect.getHeight() / 2),
-							rect.getX() + rect.getWidth() / 2 - PLAYER_CENTER.x) + Math.PI * 2) % (Math.PI * 2);
-					double angle_tl = (Math.atan2(PLAYER_CENTER.y - rect.getY(),
-							rect.getX() - PLAYER_CENTER.x) + Math.PI * 2) % (Math.PI * 2);
-					double angle_br = (Math.atan2(PLAYER_CENTER.y - (rect.getY() + rect.getHeight()),
-							rect.getX() + rect.getWidth() - PLAYER_CENTER.x) + Math.PI * 2) % (Math.PI * 2);
-					double angle_tr = (Math.atan2(PLAYER_CENTER.y - rect.getY(),
-							rect.getX() + rect.getWidth() - PLAYER_CENTER.x) + Math.PI * 2) % (Math.PI * 2);
-					double angle_bl = (Math.atan2(PLAYER_CENTER.y - (rect.getY() + rect.getHeight()),
-							rect.getX() - PLAYER_CENTER.x) + Math.PI * 2) % (Math.PI * 2);
+				for (LevelWall w : walls) {
+					Rect rect = SchemUtilities.schemToLocalZ(w, PLAYER_SCREEN_LOC, location, 0, Globals.GRIDSIZE);
+					if (inScreenSpace(rect)) {
+						Point PLAYER_CENTER = new Point(PLAYER_SCREEN_LOC.x + PLAYER_SCREEN_LOC.width / 2,
+								PLAYER_SCREEN_LOC.y + PLAYER_SCREEN_LOC.height / 2);
 
-					for (int i = 0; i < areas.length; i++) {
-						Polygon o = new Polygon();
-						Double center_points_buff = args[i].getValue0();
-						Double corner_buff = args[i].getValue1();
-						Double end_buff = args[i].getValue2();
+						double overall_angle = (Math.atan2(PLAYER_CENTER.y - (rect.getY() + rect.getHeight() / 2),
+								rect.getX() + rect.getWidth() / 2 - PLAYER_CENTER.x) + Math.PI * 2) % (Math.PI * 2);
+						double angle_tl = (Math.atan2(PLAYER_CENTER.y - rect.getY(),
+								rect.getX() - PLAYER_CENTER.x) + Math.PI * 2) % (Math.PI * 2);
+						double angle_br = (Math.atan2(PLAYER_CENTER.y - (rect.getY() + rect.getHeight()),
+								rect.getX() + rect.getWidth() - PLAYER_CENTER.x) + Math.PI * 2) % (Math.PI * 2);
+						double angle_tr = (Math.atan2(PLAYER_CENTER.y - rect.getY(),
+								rect.getX() + rect.getWidth() - PLAYER_CENTER.x) + Math.PI * 2) % (Math.PI * 2);
+						double angle_bl = (Math.atan2(PLAYER_CENTER.y - (rect.getY() + rect.getHeight()),
+								rect.getX() - PLAYER_CENTER.x) + Math.PI * 2) % (Math.PI * 2);
 
-						Point inner_first = null;
-						Pair<String, Point> outer_first = null;
-						Pair<String, Point> outer_last = null;
-						Point inner_last = null;
-						if (angle_br >= 0 && angle_br < Math.PI / 2) {
-							inner_first = new Point((int) (rect.getX() + rect.getWidth() - corner_buff),
-									(int) (rect.getY() + rect.getHeight() - corner_buff));
+						for (int i = 0; i < areas.length; i++) {
+							Polygon o = new Polygon();
+							Double center_points_buff = args[i].getValue0();
+							Double corner_buff = args[i].getValue1();
+							Double end_buff = args[i].getValue2();
 
-							outer_first = PointOnScreenEdge(angle_br,
-									new Point(rect.getX() + rect.getWidth() - end_buff,
-											rect.getY() + rect.getHeight() - end_buff));
+							Point inner_first = null;
+							Pair<String, Point> outer_first = null;
+							Pair<String, Point> outer_last = null;
+							Point inner_last = null;
+							if (angle_br >= 0 && angle_br < Math.PI / 2) {
+								inner_first = new Point((int) (rect.getX() + rect.getWidth() - corner_buff),
+										(int) (rect.getY() + rect.getHeight() - corner_buff));
 
-						} else if (angle_tr >= Math.PI / 2 && angle_tr < Math.PI) {
-							inner_first = new Point((int) (rect.getX() + rect.getWidth() - corner_buff),
-									(int) Math.ceil(rect.getY() + corner_buff));
+								outer_first = PointOnScreenEdge(angle_br,
+										new Point(rect.getX() + rect.getWidth() - end_buff,
+												rect.getY() + rect.getHeight() - end_buff));
 
-							outer_first = PointOnScreenEdge(angle_tr,
-									new Point(rect.getX() + rect.getWidth() - end_buff, rect.getY() + end_buff));
+							} else if (angle_tr >= Math.PI / 2 && angle_tr < Math.PI) {
+								inner_first = new Point((int) (rect.getX() + rect.getWidth() - corner_buff),
+										(int) Math.ceil(rect.getY() + corner_buff));
 
-						} else if (angle_tl >= Math.PI && angle_tl < Math.PI * 3 / 2) {
-							inner_first = new Point((int) Math.ceil(rect.getX() + corner_buff),
-									(int) Math.ceil(rect.getY() + corner_buff));
+								outer_first = PointOnScreenEdge(angle_tr,
+										new Point(rect.getX() + rect.getWidth() - end_buff, rect.getY() + end_buff));
 
-							outer_first = PointOnScreenEdge(angle_tl,
-									new Point(rect.getX() + end_buff, rect.getY() + end_buff));
+							} else if (angle_tl >= Math.PI && angle_tl < Math.PI * 3 / 2) {
+								inner_first = new Point((int) Math.ceil(rect.getX() + corner_buff),
+										(int) Math.ceil(rect.getY() + corner_buff));
 
-						} else if (angle_bl >= Math.PI * 3 / 2 && angle_bl < Math.PI * 2) {
-							inner_first = new Point((int) Math.ceil(rect.getX() + corner_buff),
-									(int) (rect.getY() + rect.getHeight() - corner_buff));
+								outer_first = PointOnScreenEdge(angle_tl,
+										new Point(rect.getX() + end_buff, rect.getY() + end_buff));
 
-							outer_first = PointOnScreenEdge(angle_bl,
-									new Point(rect.getX() + end_buff, rect.getY() + rect.getHeight() - end_buff));
+							} else if (angle_bl >= Math.PI * 3 / 2 && angle_bl < Math.PI * 2) {
+								inner_first = new Point((int) Math.ceil(rect.getX() + corner_buff),
+										(int) (rect.getY() + rect.getHeight() - corner_buff));
 
-						}
+								outer_first = PointOnScreenEdge(angle_bl,
+										new Point(rect.getX() + end_buff, rect.getY() + rect.getHeight() - end_buff));
 
-						if (angle_tl >= 0 && angle_tl < Math.PI / 2) {
-							outer_last = PointOnScreenEdge(angle_tl,
-									new Point(rect.getX() + end_buff, rect.getY() + end_buff));
-
-							inner_last = new Point((int) Math.ceil(rect.getX() + corner_buff),
-									(int) Math.ceil(rect.getY() + corner_buff));
-
-						} else if (angle_bl >= Math.PI / 2 && angle_bl < Math.PI) {
-							outer_last = PointOnScreenEdge(angle_bl,
-									new Point(rect.getX() + end_buff, rect.getY() + rect.getHeight() - end_buff));
-
-							inner_last = new Point((int) Math.ceil(rect.getX() + corner_buff),
-									(int) (rect.getY() + rect.getHeight() - corner_buff));
-
-						} else if (angle_br >= Math.PI && angle_br < Math.PI * 3 / 2) {
-							outer_last = PointOnScreenEdge(angle_br, new Point(rect.getX() + rect.getWidth() - end_buff,
-									rect.getY() + rect.getHeight() - end_buff));
-
-							inner_last = new Point((int) (rect.getX() + rect.getWidth() - corner_buff),
-									(int) (rect.getY() + rect.getHeight() - corner_buff));
-
-						} else if (angle_tr >= Math.PI * 3 / 2 && angle_tr < Math.PI * 2) {
-							outer_last = PointOnScreenEdge(angle_tr,
-									new Point(rect.getX() + rect.getWidth() - end_buff, rect.getY() + end_buff));
-
-							inner_last = new Point((int) (rect.getX() + rect.getWidth() - corner_buff),
-									(int) Math.ceil(rect.getY() + corner_buff));
-
-						}
-
-						if (inner_first != null) {
-							o.addPoint((int) inner_first.getX(), (int) inner_first.getY());
-							if (i == 0) {
-								g.setColor(Color.WHITE);
-								g.fillRect((int) inner_first.x - Globals.OVERLAY_MARKER_SIZE / 2,
-										(int) inner_first.y - Globals.OVERLAY_MARKER_SIZE / 2,
-										Globals.OVERLAY_MARKER_SIZE, Globals.OVERLAY_MARKER_SIZE);
 							}
-						}
 
-						if (outer_first != null) {
-							o.addPoint((int) outer_first.getValue1().x, (int) outer_first.getValue1().y);
-							if (i == 0) {
-								g.setColor(Color.ORANGE);
-								g.fillRect((int) outer_first.getValue1().getX() - Globals.OVERLAY_MARKER_SIZE / 2,
-										(int) outer_first.getValue1().getY() - Globals.OVERLAY_MARKER_SIZE / 2,
-										Globals.OVERLAY_MARKER_SIZE, Globals.OVERLAY_MARKER_SIZE);
+							if (angle_tl >= 0 && angle_tl < Math.PI / 2) {
+								outer_last = PointOnScreenEdge(angle_tl,
+										new Point(rect.getX() + end_buff, rect.getY() + end_buff));
+
+								inner_last = new Point((int) Math.ceil(rect.getX() + corner_buff),
+										(int) Math.ceil(rect.getY() + corner_buff));
+
+							} else if (angle_bl >= Math.PI / 2 && angle_bl < Math.PI) {
+								outer_last = PointOnScreenEdge(angle_bl,
+										new Point(rect.getX() + end_buff, rect.getY() + rect.getHeight() - end_buff));
+
+								inner_last = new Point((int) Math.ceil(rect.getX() + corner_buff),
+										(int) (rect.getY() + rect.getHeight() - corner_buff));
+
+							} else if (angle_br >= Math.PI && angle_br < Math.PI * 3 / 2) {
+								outer_last = PointOnScreenEdge(angle_br,
+										new Point(rect.getX() + rect.getWidth() - end_buff,
+												rect.getY() + rect.getHeight() - end_buff));
+
+								inner_last = new Point((int) (rect.getX() + rect.getWidth() - corner_buff),
+										(int) (rect.getY() + rect.getHeight() - corner_buff));
+
+							} else if (angle_tr >= Math.PI * 3 / 2 && angle_tr < Math.PI * 2) {
+								outer_last = PointOnScreenEdge(angle_tr,
+										new Point(rect.getX() + rect.getWidth() - end_buff, rect.getY() + end_buff));
+
+								inner_last = new Point((int) (rect.getX() + rect.getWidth() - corner_buff),
+										(int) Math.ceil(rect.getY() + corner_buff));
+
 							}
-						}
-						if (outer_first != null && outer_last != null) {
-							if (!outer_first.getValue0().equals(outer_last.getValue0())) {
-								if ((outer_first.getValue0().equals("top") && outer_last.getValue0().equals("left")) ||
-										(outer_first.getValue0().equals("left")
-												&& outer_last.getValue0().equals("top"))) {
-									o.addPoint(0, 0);
-								} else if ((outer_first.getValue0().equals("top")
-										&& outer_last.getValue0().equals("right"))
-										||
-										(outer_first.getValue0().equals("right")
-												&& outer_last.getValue0().equals("top"))) {
-									o.addPoint(Globals.RENDER_WIDTH, 0);
-								} else if ((outer_first.getValue0().equals("bottom")
-										&& outer_last.getValue0().equals("left")) ||
-										(outer_first.getValue0().equals("left")
-												&& outer_last.getValue0().equals("bottom"))) {
-									o.addPoint(0, Globals.RENDER_HEIGHT);
-								} else if ((outer_first.getValue0().equals("bottom")
-										&& outer_last.getValue0().equals("right")) ||
-										(outer_first.getValue0().equals("right")
-												&& outer_last.getValue0().equals("bottom"))) {
-									o.addPoint(Globals.RENDER_WIDTH, Globals.RENDER_HEIGHT);
-								} else if ((outer_first.getValue0().equals("top")
-										&& outer_last.getValue0().equals("bottom")) ||
-										(outer_first.getValue0().equals("bottom")
-												&& outer_last.getValue0().equals("top"))) {
-									if (overall_angle >= Math.PI / 2 && overall_angle < Math.PI * 3 / 2) {
+
+							if (inner_first != null) {
+								o.addPoint((int) inner_first.getX(), (int) inner_first.getY());
+								if (i == 0) {
+									g.setColor(Color.WHITE);
+									g.fillRect((int) inner_first.x - Globals.OVERLAY_MARKER_SIZE / 2,
+											(int) inner_first.y - Globals.OVERLAY_MARKER_SIZE / 2,
+											Globals.OVERLAY_MARKER_SIZE, Globals.OVERLAY_MARKER_SIZE);
+								}
+							}
+
+							if (outer_first != null) {
+								o.addPoint((int) outer_first.getValue1().x, (int) outer_first.getValue1().y);
+								if (i == 0) {
+									g.setColor(Color.ORANGE);
+									g.fillRect((int) outer_first.getValue1().getX() - Globals.OVERLAY_MARKER_SIZE / 2,
+											(int) outer_first.getValue1().getY() - Globals.OVERLAY_MARKER_SIZE / 2,
+											Globals.OVERLAY_MARKER_SIZE, Globals.OVERLAY_MARKER_SIZE);
+								}
+							}
+							if (outer_first != null && outer_last != null) {
+								if (!outer_first.getValue0().equals(outer_last.getValue0())) {
+									if ((outer_first.getValue0().equals("top") && outer_last.getValue0().equals("left"))
+											||
+											(outer_first.getValue0().equals("left")
+													&& outer_last.getValue0().equals("top"))) {
 										o.addPoint(0, 0);
-										o.addPoint(0, Globals.RENDER_HEIGHT);
-									} else {
-										o.addPoint(Globals.RENDER_WIDTH, Globals.RENDER_HEIGHT);
+									} else if ((outer_first.getValue0().equals("top")
+											&& outer_last.getValue0().equals("right"))
+											||
+											(outer_first.getValue0().equals("right")
+													&& outer_last.getValue0().equals("top"))) {
 										o.addPoint(Globals.RENDER_WIDTH, 0);
-									}
-								} else if ((outer_first.getValue0().equals("left")
-										&& outer_last.getValue0().equals("right")) ||
-										(outer_first.getValue0().equals("right")
-												&& outer_last.getValue0().equals("left"))) {
-									if (overall_angle >= 0 && overall_angle < Math.PI) {
-										o.addPoint(0, 0);
-										o.addPoint(Globals.RENDER_WIDTH, 0);
-									} else {
+									} else if ((outer_first.getValue0().equals("bottom")
+											&& outer_last.getValue0().equals("left")) ||
+											(outer_first.getValue0().equals("left")
+													&& outer_last.getValue0().equals("bottom"))) {
 										o.addPoint(0, Globals.RENDER_HEIGHT);
+									} else if ((outer_first.getValue0().equals("bottom")
+											&& outer_last.getValue0().equals("right")) ||
+											(outer_first.getValue0().equals("right")
+													&& outer_last.getValue0().equals("bottom"))) {
 										o.addPoint(Globals.RENDER_WIDTH, Globals.RENDER_HEIGHT);
+									} else if ((outer_first.getValue0().equals("top")
+											&& outer_last.getValue0().equals("bottom")) ||
+											(outer_first.getValue0().equals("bottom")
+													&& outer_last.getValue0().equals("top"))) {
+										if (overall_angle >= Math.PI / 2 && overall_angle < Math.PI * 3 / 2) {
+											o.addPoint(0, 0);
+											o.addPoint(0, Globals.RENDER_HEIGHT);
+										} else {
+											o.addPoint(Globals.RENDER_WIDTH, Globals.RENDER_HEIGHT);
+											o.addPoint(Globals.RENDER_WIDTH, 0);
+										}
+									} else if ((outer_first.getValue0().equals("left")
+											&& outer_last.getValue0().equals("right")) ||
+											(outer_first.getValue0().equals("right")
+													&& outer_last.getValue0().equals("left"))) {
+										if (overall_angle >= 0 && overall_angle < Math.PI) {
+											o.addPoint(0, 0);
+											o.addPoint(Globals.RENDER_WIDTH, 0);
+										} else {
+											o.addPoint(0, Globals.RENDER_HEIGHT);
+											o.addPoint(Globals.RENDER_WIDTH, Globals.RENDER_HEIGHT);
+										}
 									}
 								}
 							}
-						}
 
-						if (outer_last != null) {
-							o.addPoint((int) outer_last.getValue1().getX(), (int) outer_last.getValue1().getY());
-							if (i == 0) {
-								g.setColor(Color.BLUE);
-								g.fillRect((int) outer_last.getValue1().getX() - Globals.OVERLAY_MARKER_SIZE / 2,
-										(int) outer_last.getValue1().getY() - Globals.OVERLAY_MARKER_SIZE / 2,
-										Globals.OVERLAY_MARKER_SIZE, Globals.OVERLAY_MARKER_SIZE);
+							if (outer_last != null) {
+								o.addPoint((int) outer_last.getValue1().getX(), (int) outer_last.getValue1().getY());
+								if (i == 0) {
+									g.setColor(Color.BLUE);
+									g.fillRect((int) outer_last.getValue1().getX() - Globals.OVERLAY_MARKER_SIZE / 2,
+											(int) outer_last.getValue1().getY() - Globals.OVERLAY_MARKER_SIZE / 2,
+											Globals.OVERLAY_MARKER_SIZE, Globals.OVERLAY_MARKER_SIZE);
+								}
 							}
-						}
 
-						if (inner_last != null) {
-							o.addPoint((int) inner_last.x, (int) inner_last.y);
-							if (i == 0) {
-								g.setColor(Color.GREEN);
-								g.fillRect((int) inner_last.x - Globals.OVERLAY_MARKER_SIZE / 2,
-										(int) inner_last.y - Globals.OVERLAY_MARKER_SIZE / 2,
-										Globals.OVERLAY_MARKER_SIZE, Globals.OVERLAY_MARKER_SIZE);
+							if (inner_last != null) {
+								o.addPoint((int) inner_last.x, (int) inner_last.y);
+								if (i == 0) {
+									g.setColor(Color.GREEN);
+									g.fillRect((int) inner_last.x - Globals.OVERLAY_MARKER_SIZE / 2,
+											(int) inner_last.y - Globals.OVERLAY_MARKER_SIZE / 2,
+											Globals.OVERLAY_MARKER_SIZE, Globals.OVERLAY_MARKER_SIZE);
+								}
 							}
+
+							if (angle_bl > Math.PI / 2 && angle_bl < Math.PI && angle_br > 0
+									&& angle_br < Math.PI / 2) {
+								o.addPoint((int) (rect.getX() + center_points_buff),
+										(int) (rect.getY() + rect.getHeight() + center_points_buff));
+								o.addPoint((int) (rect.getX() + rect.getWidth() - center_points_buff),
+										(int) (rect.getY() + rect.getHeight() + center_points_buff));
+							}
+							if (angle_bl > Math.PI / 2 && angle_bl < Math.PI && angle_tr > Math.PI / 2
+									&& angle_tr < Math.PI) {
+								o.addPoint((int) (rect.getX() + rect.getWidth() + center_points_buff),
+										(int) (rect.getY() + rect.getHeight() + center_points_buff));
+							}
+							if (angle_tr > Math.PI / 2 && angle_tr < Math.PI && angle_br > Math.PI
+									&& angle_br < Math.PI * 3 / 2) {
+								o.addPoint((int) (rect.getX() + rect.getWidth() + center_points_buff),
+										(int) (rect.getY() + rect.getHeight() - center_points_buff));
+								o.addPoint((int) (rect.getX() + rect.getWidth() + center_points_buff),
+										(int) (rect.getY() + center_points_buff));
+							}
+							if (angle_tr > Math.PI && angle_tr < Math.PI * 3 / 2 && angle_br > Math.PI
+									&& angle_br < Math.PI * 3 / 2) {
+								o.addPoint((int) (rect.getX() + rect.getWidth() + center_points_buff),
+										(int) (rect.getY() - center_points_buff));
+							}
+							if (angle_tl > Math.PI && angle_tl < Math.PI * 3 / 2 && angle_tr > Math.PI * 3 / 2
+									&& angle_tr < Math.PI * 2) {
+								o.addPoint((int) (rect.getX() + rect.getWidth() - center_points_buff),
+										(int) (rect.getY() - center_points_buff));
+								o.addPoint((int) (rect.getX() + center_points_buff),
+										(int) (rect.getY() - center_points_buff));
+							}
+							if (angle_tr > Math.PI * 3 / 2 && angle_tr < Math.PI * 2 && angle_bl > Math.PI * 3 / 2
+									&& angle_bl < Math.PI * 2) {
+								o.addPoint((int) (rect.getX() - center_points_buff),
+										(int) (rect.getY() - center_points_buff));
+							}
+							if (angle_tl > 0 && angle_tl < Math.PI / 2 && angle_br > Math.PI * 3 / 2
+									&& angle_br < Math.PI * 2) {
+								o.addPoint((int) (rect.getX() - center_points_buff),
+										(int) (rect.getY() + center_points_buff));
+								o.addPoint((int) (rect.getX() - center_points_buff),
+										(int) (rect.getY() + rect.getHeight() - center_points_buff));
+							}
+							if (angle_tl > 0 && angle_tl < Math.PI / 2 && angle_br > 0 && angle_br < Math.PI / 2) {
+								o.addPoint((int) (rect.getX() - center_points_buff),
+										(int) (rect.getY() + rect.getHeight() + center_points_buff));
+							}
+							areas[i].add(new Area(o));
 						}
 
-						if (angle_bl > Math.PI / 2 && angle_bl < Math.PI && angle_br > 0 && angle_br < Math.PI / 2) {
-							o.addPoint((int) (rect.getX() + center_points_buff),
-									(int) (rect.getY() + rect.getHeight() + center_points_buff));
-							o.addPoint((int) (rect.getX() + rect.getWidth() - center_points_buff),
-									(int) (rect.getY() + rect.getHeight() + center_points_buff));
-						}
-						if (angle_bl > Math.PI / 2 && angle_bl < Math.PI && angle_tr > Math.PI / 2
-								&& angle_tr < Math.PI) {
-							o.addPoint((int) (rect.getX() + rect.getWidth() + center_points_buff),
-									(int) (rect.getY() + rect.getHeight() + center_points_buff));
-						}
-						if (angle_tr > Math.PI / 2 && angle_tr < Math.PI && angle_br > Math.PI
-								&& angle_br < Math.PI * 3 / 2) {
-							o.addPoint((int) (rect.getX() + rect.getWidth() + center_points_buff),
-									(int) (rect.getY() + rect.getHeight() - center_points_buff));
-							o.addPoint((int) (rect.getX() + rect.getWidth() + center_points_buff),
-									(int) (rect.getY() + center_points_buff));
-						}
-						if (angle_tr > Math.PI && angle_tr < Math.PI * 3 / 2 && angle_br > Math.PI
-								&& angle_br < Math.PI * 3 / 2) {
-							o.addPoint((int) (rect.getX() + rect.getWidth() + center_points_buff),
-									(int) (rect.getY() - center_points_buff));
-						}
-						if (angle_tl > Math.PI && angle_tl < Math.PI * 3 / 2 && angle_tr > Math.PI * 3 / 2
-								&& angle_tr < Math.PI * 2) {
-							o.addPoint((int) (rect.getX() + rect.getWidth() - center_points_buff),
-									(int) (rect.getY() - center_points_buff));
-							o.addPoint((int) (rect.getX() + center_points_buff),
-									(int) (rect.getY() - center_points_buff));
-						}
-						if (angle_tr > Math.PI * 3 / 2 && angle_tr < Math.PI * 2 && angle_bl > Math.PI * 3 / 2
-								&& angle_bl < Math.PI * 2) {
-							o.addPoint((int) (rect.getX() - center_points_buff),
-									(int) (rect.getY() - center_points_buff));
-						}
-						if (angle_tl > 0 && angle_tl < Math.PI / 2 && angle_br > Math.PI * 3 / 2
-								&& angle_br < Math.PI * 2) {
-							o.addPoint((int) (rect.getX() - center_points_buff),
-									(int) (rect.getY() + center_points_buff));
-							o.addPoint((int) (rect.getX() - center_points_buff),
-									(int) (rect.getY() + rect.getHeight() - center_points_buff));
-						}
-						if (angle_tl > 0 && angle_tl < Math.PI / 2 && angle_br > 0 && angle_br < Math.PI / 2) {
-							o.addPoint((int) (rect.getX() - center_points_buff),
-									(int) (rect.getY() + rect.getHeight() + center_points_buff));
-						}
-						areas[i].add(new Area(o));
 					}
-
 				}
-			}
-			visibility.subtract(new Area(areas[0]));
 
-			Shape vis = areas[1];
+				visibility.subtract(new Area(areas[0]));
+			}
 			dispG.setPaint(null);
+
 			for (LevelWall wall : walls) {
-				Rect wallrect = SchemUtilities.schemToLocalZ(wall, PLAYER_SCREEN_LOC, location, wall.getZ(),
-						Globals.GRIDSIZE);
-				if (inScreenSpace(wallrect)) {
-					Rectangle2D re = new Rectangle2D.Double((int) Math.round(wallrect.getX()),
-							(int) Math.round(wallrect.getY()),
-							wallrect.getWidth(),
-							wallrect.getHeight());
+				if (inScreenSpace(wall) && wall.getAsset().equals("wood")) {
+					Rect r = SchemUtilities.schemToLocal(wall, location, Globals.GRIDSIZE);
+					Point obj = new Point(r.getX() + r.getWidth() / 2, r.getY() + r.getHeight() / 2);
 
-					if (!vis.contains(re)) {
+					Ellipse2D e2d2 = new Ellipse2D.Double(obj.x - Globals.LAMP_RADIUS, obj.y - Globals.LAMP_RADIUS,
+							Globals.LAMP_RADIUS * 2, Globals.LAMP_RADIUS * 2);
+					
+					if(SHADOWS_MODE)
+					visibility.add(new Area(e2d2));
 
-						visibility.add(new Area((Shape) re));
+				if (LIGHT_MODE) {
+					RadialGradientPaint rgp = new RadialGradientPaint(new Point2D.Double(obj.x, obj.y),
+							(float) Globals.LAMP_RADIUS,
+							new float[] { 0.0f, 0.5f, 1.0f },
+							new Color[] { Color.BLACK, new Color(0, 0, 0, 220), new Color(0, 0, 0, 0) });
+
+					dispG.setPaint(rgp);
+					dispG.fill(new Ellipse2D.Double(obj.getX() - Globals.LAMP_RADIUS, obj.getY() - Globals.LAMP_RADIUS,
+							Globals.LAMP_RADIUS * 2, Globals.LAMP_RADIUS * 2));
+				}
+				}
+			}
+			
+			Shape vis = areas[1];
+			
+			if (SHADOWS_MODE) {
+				for (LevelWall wall : walls) {
+					Rect wallrect = SchemUtilities.schemToLocalZ(wall, PLAYER_SCREEN_LOC, location, wall.getZ(),
+							Globals.GRIDSIZE);
+					if (inScreenSpace(wallrect)) {
+						Rectangle2D re = new Rectangle2D.Double((int) Math.round(wallrect.getX()),
+								(int) Math.round(wallrect.getY()),
+								wallrect.getWidth(),
+								wallrect.getHeight());
+
+						if (WALL_VISIBILITY || !vis.contains(re)) {
+
+							visibility.add(new Area((Shape) re));
+						}
 					}
 				}
 			}
 
-		}
 		return visibility;
 	}
 
@@ -821,9 +889,18 @@ public class Application extends JPanel {
 			g.setColor(Color.WHITE);
 
 			for (int i = 0; i < debug_opts.size(); i++) {
-				Pair<String, Runnable> pair = debug_opts.get(i);
+				Triplet<String, Runnable, Callable<String>> triplet = debug_opts.get(i);
 
-				String name = pair.getValue0();
+				String name = "null";
+				try {
+					String str = triplet.getValue2().call();
+					if(str.length()>0)
+						name = String.format(triplet.getValue0(), triplet.getValue2().call());
+					else
+						name = triplet.getValue0();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
 
 				g.drawString(name, (int) (bound.x + SIDE_SPACING),
 						(int) (bound.y + (i + 1) * text_height + (i) * VERT_MID_SPACING + VERT_SPACING));

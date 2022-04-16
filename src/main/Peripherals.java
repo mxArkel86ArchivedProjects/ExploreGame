@@ -17,7 +17,7 @@ public class Peripherals implements ComponentListener, KeyListener, MouseInputLi
 	HashMap<Integer, Boolean> keyRegister = new HashMap<Integer, Boolean>();
 	HashMap<Integer, Boolean> keyToggleRegister = new HashMap<Integer, Boolean>();
 	//List<HashMap<Integer, Boolean>> controllersRegister = new ArrayList<>();
-	Point MOUSE_POS = new Point(0,0);
+	private Point MOUSE_POS = new Point(0,0);
 	String typed_str = "";
 	boolean type_enable = false;
 	public boolean mouse_state = false;
@@ -125,19 +125,18 @@ public class Peripherals implements ComponentListener, KeyListener, MouseInputLi
 
 	@Override
 	public void mouseDragged(MouseEvent e) {
-		MOUSE_POS = new Point(Globals.RENDER_WIDTH / Globals.WINDOW_WIDTH * e.getX(),
-				Globals.RENDER_HEIGHT / Globals.WINDOW_HEIGHT * e.getY());
-		e.consume();
+		MOUSE_POS = new Point(e.getX(),
+				e.getY());
 	}
 
 	@Override
 	public void mouseMoved(MouseEvent e) {
-		MOUSE_POS = new Point(Globals.RENDER_WIDTH / Globals.WINDOW_WIDTH * e.getX(),
-				Globals.RENDER_HEIGHT / Globals.WINDOW_HEIGHT * e.getY());
+		MOUSE_POS = new Point(e.getX(),
+				e.getY());
 	}
 
 	public Point mousePos(){
-		return MOUSE_POS;
+		return new Point(MOUSE_POS.x*Globals.RENDER_WIDTH/Globals.WINDOW_WIDTH, MOUSE_POS.y*Globals.RENDER_WIDTH/Globals.WINDOW_WIDTH);
 	}
 
 	@Override
