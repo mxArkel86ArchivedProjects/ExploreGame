@@ -25,8 +25,8 @@ public static long tick = 0;
 		app = new Application();
 		peripherals = new Peripherals();
 
-		int h = Globals.INITIAL_HEIGHT;
-		int w = Globals.INITIAL_WIDTH;
+		int h = Globals.WINDOW_HEIGHT;
+		int w = Globals.WINDOW_WIDTH;
 		
 		frame.setSize(new Dimension(w, h));
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);

@@ -3,8 +3,10 @@ package main;
 public class Globals {
 	// WINDOW SETTINGS
 	public static final double REFRESH_RATE = 60;
-	public static final int INITIAL_HEIGHT = 900;
-	public static final int INITIAL_WIDTH = 1600;
+	public static final int RENDER_WIDTH = 1920;
+	public static final int RENDER_HEIGHT = 1080;
+	public static int WINDOW_WIDTH = 1920;
+	public static int WINDOW_HEIGHT = 1080;
 	// IMAGE SETTINGS
 	public static final int PIXELS_PER_GRID = 64;
 	public static final int PIXELS_RESIZE = 32;
@@ -28,7 +30,7 @@ public class Globals {
 	public static final double DASH_PERCENT_FALLOFF_SPEED = 0.04;
 	public static final int DASH_DELAY = 100;
 	public static final int ASSET_MENU_HORIZONTAL = 10;
-	public static final double BULLET_SPEED_MULT = 2;
+	public static final double BULLET_SPEED_MULT = 0.8;
 	// LIGHTING
 	public static final double FLASHLIGHT_FOV = 0.9;
 	public static final int INNER_RADIUS = 240;
