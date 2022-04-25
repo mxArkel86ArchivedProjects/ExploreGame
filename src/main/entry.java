@@ -5,10 +5,16 @@ import java.awt.Dimension;
 import java.awt.Point;
 import java.awt.Toolkit;
 import java.awt.image.BufferedImage;
+import java.util.List;
 import java.util.Timer;
+import java.util.function.Function;
 
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
+
+import util.Pathfind_Node;
+import util.PathFinding;
+import util.Pathfind_Int;
 
 //import net.java.games.input.Controller;
 
@@ -19,88 +25,96 @@ public static Peripherals peripherals;
 public static Timer t;
 public static long tick = 0;
 
-	public static void main(String[] args) {
-		frame = new JFrame();
-		t = new Timer();
-		app = new Application();
-		peripherals = new Peripherals();
+public static void main(String[] args) {
+		List<Pathfind_Int> path = PathFinding.PathFind(new Pathfind_Node(0, 0, null), new Pathfind_Node(4, 4, null), new Function<Pathfind_Int,Boolean>() {
+			@Override
+			public Boolean apply(Pathfind_Int t) {
+				return (t.getX()>=0 && t.getX()<=10 && t.getY()>=0 && t.getY()<=10);
+			}
+		});
 
-		frame.setTitle("Explore Game");
-		int w = Globals.WINDOW_WIDTH_INITIAL;
-		int h = Globals.WINDOW_HEIGHT_INITIAL;
-		frame.setSize(new Dimension(w, h));
-		app.setSize(new Dimension(w, h));
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		System.out.println(String.join(" --> ", path.stream().map(x->x.getX()+","+x.getY()).toArray(String[]::new)));
+		// frame = new JFrame();
+		// t = new Timer();
+		// app = new Application();
+		// peripherals = new Peripherals();
+
+		// frame.setTitle("Explore Game");
+		// int w = Globals.WINDOW_WIDTH_INITIAL;
+		// int h = Globals.WINDOW_HEIGHT_INITIAL;
+		// frame.setSize(new Dimension(w, h));
+		// app.setSize(new Dimension(w, h));
+		// frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		
-		app.Init(w, h);
+		// app.Init(w, h);
 		
-		System.setProperty("sun.java2d.opengl", "true");
+		// System.setProperty("sun.java2d.opengl", "true");
 		
-				// Transparent 16 x 16 pixel cursor image.
-		BufferedImage cursorImg = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+		// 		// Transparent 16 x 16 pixel cursor image.
+		// BufferedImage cursorImg = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
 
-		// Create a new blank cursor.
-		Cursor blankCursor = Toolkit.getDefaultToolkit().createCustomCursor(
-			cursorImg, new Point(0, 0), "blank cursor");
+		// // Create a new blank cursor.
+		// Cursor blankCursor = Toolkit.getDefaultToolkit().createCustomCursor(
+		// 	cursorImg, new Point(0, 0), "blank cursor");
 
-		// Set the blank cursor to the JFrame.
-		frame.getContentPane().setCursor(blankCursor);
+		// // Set the blank cursor to the JFrame.
+		// frame.getContentPane().setCursor(blankCursor);
 
-		System.setProperty("sun.java2d.opengl", "true");
+		// System.setProperty("sun.java2d.opengl", "true");
 		
-		frame.addComponentListener(peripherals);
-		frame.addKeyListener(peripherals);
-		app.addMouseMotionListener(peripherals);
-		app.addMouseListener(peripherals);
+		// frame.addComponentListener(peripherals);
+		// frame.addKeyListener(peripherals);
+		// app.addMouseMotionListener(peripherals);
+		// app.addMouseListener(peripherals);
 		
-		//Controller c = peripherals.getControllers()[0];
+		// //Controller c = peripherals.getControllers()[0];
 
-		Thread thread=new Thread(() ->
-        {
-			long diff = (long) (1000000000l / Globals.REFRESH_RATE);
-			long diff2 = (long)(1000000000l/120);
-			long reg = 0;
-			long reg2 = 0;
-            while(true)
-            {
-                long time=System.nanoTime();
-				tick = time/1000000;
-				if (time >= reg + diff) {
-					try {
-						reg = time;
-						SwingUtilities.invokeAndWait(() -> {
-							//peripherals.ControllerTick(c);
-							//app.onTick();
-							app.repaint(0, 0, app.getWidth(), app.getHeight());
-						});
+		// Thread thread=new Thread(() ->
+        // {
+		// 	long diff = (long) (1000000000l / Globals.REFRESH_RATE);
+		// 	long diff2 = (long)(1000000000l/120);
+		// 	long reg = 0;
+		// 	long reg2 = 0;
+        //     while(true)
+        //     {
+        //         long time=System.nanoTime();
+		// 		tick = time/1000000;
+		// 		if (time >= reg + diff) {
+		// 			try {
+		// 				reg = time;
+		// 				SwingUtilities.invokeAndWait(() -> {
+		// 					//peripherals.ControllerTick(c);
+		// 					//app.onTick();
+		// 					app.repaint(0, 0, app.getWidth(), app.getHeight());
+		// 				});
 
-					} catch (Exception e) {
-						((Throwable) e).getStackTrace();
-					}
-				}
-				 if (time >= reg2 + diff2) {
-				 	try {
-						reg2 = time;
-						SwingUtilities.invokeAndWait(() -> {
-							app.onTick();
-						});
+		// 			} catch (Exception e) {
+		// 				((Throwable) e).getStackTrace();
+		// 			}
+		// 		}
+		// 		 if (time >= reg2 + diff2) {
+		// 		 	try {
+		// 				reg2 = time;
+		// 				SwingUtilities.invokeAndWait(() -> {
+		// 					app.onTick();
+		// 				});
 
-					} catch (Exception e) {
-						((Throwable) e).getStackTrace();
-					}
-				}
-                try {
-                //Thread.sleep(16L);
-                }catch(Exception e) {
+		// 			} catch (Exception e) {
+		// 				((Throwable) e).getStackTrace();
+		// 			}
+		// 		}
+        //         try {
+        //         //Thread.sleep(16L);
+        //         }catch(Exception e) {
                 	
-                }
-            }
-        });
-        thread.start();
+        //         }
+        //     }
+        // });
+        // thread.start();
 		
 		
-		frame.add(app);
-        frame.setVisible(true);
+		// frame.add(app);
+        // frame.setVisible(true);
 	}
 	
 

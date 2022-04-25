@@ -56,7 +56,6 @@ import util.CollisionUtil;
 import util.ImageImport;
 import util.LevelConfigUtil;
 import util.MathUtil;
-import util.PathFindPath;
 import util.Point;
 import util.Rect;
 import util.SchemUtilities;
@@ -750,10 +749,6 @@ public class Application extends JPanel {
 		}
 
 		return visibility;
-	}
-
-	PathFindPath pathFind(List<PathFindPath> searchPaths, int xf, int yf, int iteration) {
-		return null;
 	}
 
 	void drawUI(Graphics2D g) {
