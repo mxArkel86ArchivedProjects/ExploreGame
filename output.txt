@@ -3,6 +3,6 @@
 [collision]
 
 [walls]
-
+wood,47,40,0.000
 
 [tiles]

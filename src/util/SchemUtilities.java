@@ -7,11 +7,16 @@ public class SchemUtilities {
     	return new Point(r.getX() * GRIDSIZE - location.x, r.getY() * GRIDSIZE - location.y);
     }
 
-    public static Rect schemToLocal(Rect r, Point location, double GRIDSIZE) {
-    	/// multiply by GRIDSIZE, subtract camera location
-    	return new Rect(r.getX() * GRIDSIZE - location.x, r.getY() * GRIDSIZE - location.y, r.getWidth() * GRIDSIZE,
-    			r.getHeight() * GRIDSIZE);
-    }
+	public static Rect schemToLocal(Rect r, Point location, double GRIDSIZE) {
+		/// multiply by GRIDSIZE, subtract camera location
+		return new Rect(r.getX() * GRIDSIZE - location.x, r.getY() * GRIDSIZE - location.y, r.getWidth() * GRIDSIZE,
+				r.getHeight() * GRIDSIZE);
+	}
+	
+	public static Point roundSchemFramePoint(Point p, Point location, double GRIDSIZE) {
+		Point p2 = SchemUtilities.schemPointFromFramePos(p, location, GRIDSIZE);
+		return SchemUtilities.schemToLocalPoint(p2, location, GRIDSIZE);
+	}
 
 	public static Rect schemToLocalZ(Rect r, Rect PLAYER_SCREEN_LOC, Point location, double depth, double GRIDSIZE) {
 		double z = Math.exp(depth);

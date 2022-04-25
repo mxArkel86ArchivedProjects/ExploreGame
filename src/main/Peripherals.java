@@ -50,8 +50,7 @@ public class Peripherals implements ComponentListener, KeyListener, MouseInputLi
 	
 	@Override
 	public void componentResized(ComponentEvent e) {
-		Globals.WINDOW_WIDTH = entry.app.getWidth();
-		Globals.WINDOW_HEIGHT = entry.app.getHeight();
+		entry.app.updateRenderResolution();
 	}
 
 	@Override
@@ -131,12 +130,11 @@ public class Peripherals implements ComponentListener, KeyListener, MouseInputLi
 
 	@Override
 	public void mouseMoved(MouseEvent e) {
-		MOUSE_POS = new Point(e.getX(),
-				e.getY());
+		MOUSE_POS = new Point(e.getX(),e.getY());
 	}
 
 	public Point mousePos(){
-		return new Point(MOUSE_POS.x*Globals.RENDER_WIDTH/Globals.WINDOW_WIDTH, MOUSE_POS.y*Globals.RENDER_WIDTH/Globals.WINDOW_WIDTH);
+		return new Point(MOUSE_POS.x, MOUSE_POS.y);
 	}
 
 	@Override
@@ -146,7 +144,7 @@ public class Peripherals implements ComponentListener, KeyListener, MouseInputLi
 
 	@Override
 	public void mousePressed(MouseEvent e) {
-		Point pos = new Point(Globals.RENDER_WIDTH/Globals.WINDOW_WIDTH* e.getX(), Globals.RENDER_HEIGHT/Globals.WINDOW_HEIGHT*e.getY());
+		Point pos = new Point(e.getX(), e.getY());
 		entry.app.mouseClick(pos);
 		mouse_state = true;
 	}
