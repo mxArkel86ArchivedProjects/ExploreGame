@@ -134,7 +134,7 @@ public class Peripherals implements ComponentListener, KeyListener, MouseInputLi
 	}
 
 	public Point mousePos(){
-		return new Point(MOUSE_POS.x, MOUSE_POS.y);
+		return new Point(MOUSE_POS.getX(), MOUSE_POS.getY());
 	}
 
 	@Override

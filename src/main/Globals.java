@@ -14,18 +14,20 @@ public class Globals {
 	public static final int PIXELS_PER_GRID_IMPORT() {
 		return (int) (50);
 	}
+
+	public static final int PATH_BUFFER = 6;
 	public static final int PIXELS_RESIZE = 64;
 	// APPLICATION PARAMS
 	public static final double PLAYER_SIZE = 72;
 	public static final double PLAYER_ACCELERATION = 0.1;
-	public static final double PLAYER_MAX_SPEED = 2.4;
+	public static final double PLAYER_MAX_SPEED = 2.8;
 	public static final double PLAYER_FRICTION = 0.1;
 	public static final double PLAYER_MIN_SPEED_CUTOFF = 0.1;
 	public static final double SPRINT_DRAIN = 0.003;
 	public static final double SPRINT_REGEN = 0.0015;
 	public static final double SPRINT_DELAY = 1000;
 	public static final double SPRINT_MULT = 1.4;
-	public static final double BULLET_DEFAULT_DISTANCE = 60;
+	public static final double BULLET_DEFAULT_DISTANCE = 40;
 	public static final double BULLET_MAX_DISTANCE = 80;
 	public static final int DASH_COUNT = 2;
 	public static final double DASH_STEP = 20;
@@ -33,7 +35,8 @@ public class Globals {
 	public static final double DASH_PERCENT_FALLOFF_SPEED = 0.04;
 	public static final int DASH_DELAY = 100;
 	public static final int ASSET_MENU_HORIZONTAL = 10;
-	public static final double BULLET_SPEED_MULT = 0.8;
+	public static final double BULLET_SPEED_MULT = 0.02;
+	public static final double BULLET_SIZE_MULT = 0.03;
 	// LIGHTING
 	public static final double FLASHLIGHT_FOV = 0.6;
 	public static final int INNER_RADIUS = 200;

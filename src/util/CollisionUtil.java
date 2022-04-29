@@ -1,6 +1,9 @@
 package util;
 
 public class CollisionUtil {
+	public static CollisionReturn SchemDynamicCollision(Rect a, Rect b, double dx, double dy) {
+		return CollisionRaw(a, b, dx, dy);
+	}
 	private static CollisionReturn CollisionRaw(Rect a, Rect b, double dx, double dy){
 		CollisionReturn ret = new CollisionReturn();
 

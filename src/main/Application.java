@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.Map.Entry;
 import java.util.concurrent.Callable;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import javax.swing.JPanel;
@@ -53,9 +54,13 @@ import inventory.Weapon;
 import util.AppAsset;
 import util.CollisionReturn;
 import util.CollisionUtil;
+import util.Enemy;
 import util.ImageImport;
 import util.LevelConfigUtil;
 import util.MathUtil;
+import util.Path;
+import util.PathFinding;
+import util.PathNode;
 import util.Point;
 import util.Rect;
 import util.SchemUtilities;
@@ -65,8 +70,8 @@ import util.Vector;
 
 public class Application extends JPanel {
 	Rect PLAYER_SCREEN_LOC = null;
-	Point TOPLEFT_BOUND = new Point(0, 0);
-	Point BOTTOMRIGHT_BOUND = new Point(0, 0);
+	public Point TOPLEFT_BOUND = new Point(0, 0);
+	public Point BOTTOMRIGHT_BOUND = new Point(0, 0);
 	Point location = new Point(0, 0);
 
 	/*
@@ -104,6 +109,8 @@ public class Application extends JPanel {
 	Vector velocity = new Vector(0, 0);
 	Vector intent = new Vector(1, 0);
 
+	Enemy enemy = new Enemy(24,24,1,1);
+
 	/*
 	 * SELECTOR VARIABLES
 	 */
@@ -117,17 +124,18 @@ public class Application extends JPanel {
 	 */
 	boolean typing = false;
 	String typing_str = "";
+	long reassign_tick = 0;
 
 	/*
 	 * GAME TOGGLES
 	 */
 	int debug_selection = 0;
 	boolean SHOW_GRID = true;
-	boolean LIGHT_MODE = true;
+	boolean LIGHT_MODE = false;
 	boolean EDIT_MODE = false;
 	boolean CLIP_MODE = false;
 	boolean OVERLAY_MODE = false;
-	boolean SHADOWS_MODE = true;
+	boolean SHADOWS_MODE = false;
 	boolean SHOW_ASSETS_MENU = false;
 	boolean WALL_VISIBILITY = true;
 
@@ -268,6 +276,16 @@ public class Application extends JPanel {
 			return;
 		}
 
+		enemy.step();
+
+		if (entry.tick>reassign_tick+5000) {
+			Point pos = playerSchemPos();
+			System.out.println("reassign POS=" + pos);
+			enemy.updatePath(pos, location, Globals.PIXELS_PER_GRID());
+			reassign_tick = entry.tick;
+		}
+		
+
 		/*
 		 * if (animation) {
 		 * double step_x = Globals.DASH_STEP * intent.getX();
@@ -275,17 +293,17 @@ public class Application extends JPanel {
 		 * if (entry.tick - dash_tick < Globals.DASH_DURATION) {
 		 * 
 		 * CollisionReturn collided = playerCollision(step_x, -step_y);
-		 * if (collided.x_collision && collided.y_collision) {
-		 * location.x += collided.disp_x;
-		 * location.y -= collided.disp_y;
+		 * if (collided.getX()_collision && collided.getY()_collision) {
+		 * location.getX() += collided.disp_x;
+		 * location.getY() -= collided.disp_y;
 		 * dash_tick = 0;
 		 * animation = false;
-		 * } else if (collided.x_collision && !collided.y_collision) {
-		 * location.x += collided.disp_x;
-		 * location.y -= step_y;
-		 * } else if (!collided.x_collision && collided.y_collision) {
-		 * location.x += step_x;
-		 * location.y -= collided.disp_y;
+		 * } else if (collided.getX()_collision && !collided.getY()_collision) {
+		 * location.getX() += collided.disp_x;
+		 * location.getY() -= step_y;
+		 * } else if (!collided.getX()_collision && collided.getY()_collision) {
+		 * location.getX() += step_x;
+		 * location.getY() -= collided.disp_y;
 		 * }
 		 * 
 		 * } else {
@@ -309,30 +327,6 @@ public class Application extends JPanel {
 	}
 
 	void RawGame(Graphics2D g) {
-
-		g.setColor(Color.GREEN);
-		g.setStroke(new BasicStroke(1));
-
-		if (SHOW_GRID) {
-			for (int x1 = (int) TOPLEFT_BOUND.x; x1 < BOTTOMRIGHT_BOUND.x; x1++) {
-				for (int y1 = (int) TOPLEFT_BOUND.y; y1 < BOTTOMRIGHT_BOUND.y; y1++) {
-					Point p = new Point(x1 * Globals.PIXELS_PER_GRID() - location.x,
-							y1 * Globals.PIXELS_PER_GRID() - location.y);
-
-					Rect r1 = new Rect((int) p.x, (int) p.y, (int) (Globals.PIXELS_PER_GRID()),
-							(int) (Globals.PIXELS_PER_GRID()));
-					if (inScreenSpace(r1)) {
-						g.drawLine((int) Math.floor(p.x), (int) Math.floor(p.y), (int) Math.floor(p.x),
-								(int) Math.floor(p.y + Globals.PIXELS_PER_GRID()));
-
-						g.drawLine((int) Math.floor(p.x), (int) Math.floor(p.y),
-								(int) Math.floor(p.x + Globals.PIXELS_PER_GRID()),
-								(int) Math.floor(p.y));
-					}
-				}
-			}
-		}
-
 		for (LevelTile o : tiles) {
 
 			Rect r = SchemUtilities.schemToLocalZ(o, PLAYER_SCREEN_LOC, location, o.getZ(), Globals.PIXELS_PER_GRID());
@@ -383,16 +377,15 @@ public class Application extends JPanel {
 		}
 
 		g.setColor(Color.YELLOW);
-		g.fillOval((int) PLAYER_SCREEN_LOC.x, (int) PLAYER_SCREEN_LOC.y, (int) PLAYER_SCREEN_LOC.width,
+		g.fillOval((int) PLAYER_SCREEN_LOC.getX(), (int) PLAYER_SCREEN_LOC.getY(), (int) PLAYER_SCREEN_LOC.width,
 				(int) PLAYER_SCREEN_LOC.height);
 
 		g.setColor(Color.GREEN);
 		for (Bullet b : bullets) {
-			Rect r = new Rect(b.x - location.x, b.y - location.y, b.width, b.height);
+			Rect r = SchemUtilities.schemToLocal(b, location, Globals.PIXELS_PER_GRID());
 			if (inScreenSpace(r))
 				g.drawRect((int) r.getX(), (int) r.getY(), (int) r.getWidth(), (int) r.getHeight());
 		}
-
 	}
 
 	private Shape LightMask(Graphics2D dispG, Graphics g) {
@@ -400,8 +393,8 @@ public class Application extends JPanel {
 		double dy = 360 * Math.sin(looking_angle);
 
 		double small_radius = 40;
-		Point center = new Point(PLAYER_SCREEN_LOC.x + PLAYER_SCREEN_LOC.width / 2,
-				PLAYER_SCREEN_LOC.y + PLAYER_SCREEN_LOC.height / 2);
+		Point center = new Point(PLAYER_SCREEN_LOC.getX() + PLAYER_SCREEN_LOC.width / 2,
+				PLAYER_SCREEN_LOC.getY() + PLAYER_SCREEN_LOC.height / 2);
 
 		Area areas[] = new Area[] { new Area(), new Area() };
 		Triplet<Double, Double, Double> args[] = new Triplet[] {
@@ -424,23 +417,23 @@ public class Application extends JPanel {
 		Polygon light = new Polygon();
 		double angle_1 = looking_angle - Globals.FLASHLIGHT_FOV;
 		double angle_2 = looking_angle + Globals.FLASHLIGHT_FOV;
-		light.addPoint((int) (center.x + small_radius * Math.cos(angle_1)),
-				(int) (center.y + small_radius * Math.sin(angle_1)));
+		light.addPoint((int) (center.getX() + small_radius * Math.cos(angle_1)),
+				(int) (center.getY() + small_radius * Math.sin(angle_1)));
 
-		light.addPoint((int) (center.x + dx + Globals.FLASHLIGHT_RANGE * Math.cos(angle_1)),
-				(int) (center.y + dy + Globals.FLASHLIGHT_RANGE * Math.sin(angle_1)));
-		light.addPoint((int) (center.x + dx + Globals.FLASHLIGHT_RANGE * Math.cos(angle_2)),
-				(int) (center.y + dy + Globals.FLASHLIGHT_RANGE * Math.sin(angle_2)));
+		light.addPoint((int) (center.getX() + dx + Globals.FLASHLIGHT_RANGE * Math.cos(angle_1)),
+				(int) (center.getY() + dy + Globals.FLASHLIGHT_RANGE * Math.sin(angle_1)));
+		light.addPoint((int) (center.getX() + dx + Globals.FLASHLIGHT_RANGE * Math.cos(angle_2)),
+				(int) (center.getY() + dy + Globals.FLASHLIGHT_RANGE * Math.sin(angle_2)));
 
-		light.addPoint((int) (center.x + small_radius * Math.cos(angle_2)),
-				(int) (center.y + small_radius * Math.sin(angle_2)));
+		light.addPoint((int) (center.getX() + small_radius * Math.cos(angle_2)),
+				(int) (center.getY() + small_radius * Math.sin(angle_2)));
 
-		Ellipse2D e2d = new Ellipse2D.Double(center.x - Globals.INNER_RADIUS, center.y - Globals.INNER_RADIUS,
+		Ellipse2D e2d = new Ellipse2D.Double(center.getX() - Globals.INNER_RADIUS, center.getY() - Globals.INNER_RADIUS,
 				Globals.INNER_RADIUS * 2, Globals.INNER_RADIUS * 2);
 
 		if (LIGHT_MODE) {
 
-			RadialGradientPaint rgp = new RadialGradientPaint(new Point2D.Double(center.x, center.y),
+			RadialGradientPaint rgp = new RadialGradientPaint(new Point2D.Double(center.getX(), center.getY()),
 					(float) Globals.INNER_RADIUS,
 					new float[] { 0.0f, 0.5f, 1.0f },
 					new Color[] { Color.BLACK, new Color(0, 0, 0, 220), new Color(0, 0, 0, 0) });
@@ -450,11 +443,11 @@ public class Application extends JPanel {
 					new Ellipse2D.Double(center.getX() - Globals.INNER_RADIUS, center.getY() - Globals.INNER_RADIUS,
 							Globals.INNER_RADIUS * 2, Globals.INNER_RADIUS * 2));
 
-			GradientPaint gp = new GradientPaint(new Point2D.Double(center.x, center.y),
+			GradientPaint gp = new GradientPaint(new Point2D.Double(center.getX(), center.getY()),
 			Color.BLACK,
-			new Point2D.Double(center.x + Globals.FLASHLIGHT_RANGE *
+			new Point2D.Double(center.getX() + Globals.FLASHLIGHT_RANGE *
 			Math.cos(looking_angle),
-			center.y + Globals.FLASHLIGHT_RANGE * Math.sin(looking_angle)),
+			center.getY() + Globals.FLASHLIGHT_RANGE * Math.sin(looking_angle)),
 			new Color(0, 0, 0, 0));
 			dispG.setPaint(gp);
 			dispG.fill(light);
@@ -472,19 +465,19 @@ public class Application extends JPanel {
 			for (LevelWall w : walls) {
 				Rect rect = SchemUtilities.schemToLocalZ(w, PLAYER_SCREEN_LOC, location, 0, Globals.PIXELS_PER_GRID());
 				if (inScreenSpace(rect)) {
-					Point PLAYER_CENTER = new Point(PLAYER_SCREEN_LOC.x + PLAYER_SCREEN_LOC.width / 2,
-							PLAYER_SCREEN_LOC.y + PLAYER_SCREEN_LOC.height / 2);
+					Point PLAYER_CENTER = new Point(PLAYER_SCREEN_LOC.getX() + PLAYER_SCREEN_LOC.width / 2,
+							PLAYER_SCREEN_LOC.getY() + PLAYER_SCREEN_LOC.height / 2);
 
-					double overall_angle = (Math.atan2(PLAYER_CENTER.y - (rect.getY() + rect.getHeight() / 2),
-							rect.getX() + rect.getWidth() / 2 - PLAYER_CENTER.x) + Math.PI * 2) % (Math.PI * 2);
-					double angle_tl = (Math.atan2(PLAYER_CENTER.y - rect.getY(),
-							rect.getX() - PLAYER_CENTER.x) + Math.PI * 2) % (Math.PI * 2);
-					double angle_br = (Math.atan2(PLAYER_CENTER.y - (rect.getY() + rect.getHeight()),
-							rect.getX() + rect.getWidth() - PLAYER_CENTER.x) + Math.PI * 2) % (Math.PI * 2);
-					double angle_tr = (Math.atan2(PLAYER_CENTER.y - rect.getY(),
-							rect.getX() + rect.getWidth() - PLAYER_CENTER.x) + Math.PI * 2) % (Math.PI * 2);
-					double angle_bl = (Math.atan2(PLAYER_CENTER.y - (rect.getY() + rect.getHeight()),
-							rect.getX() - PLAYER_CENTER.x) + Math.PI * 2) % (Math.PI * 2);
+					double overall_angle = (Math.atan2(PLAYER_CENTER.getY() - (rect.getY() + rect.getHeight() / 2),
+							rect.getX() + rect.getWidth() / 2 - PLAYER_CENTER.getX()) + Math.PI * 2) % (Math.PI * 2);
+					double angle_tl = (Math.atan2(PLAYER_CENTER.getY() - rect.getY(),
+							rect.getX() - PLAYER_CENTER.getX()) + Math.PI * 2) % (Math.PI * 2);
+					double angle_br = (Math.atan2(PLAYER_CENTER.getY() - (rect.getY() + rect.getHeight()),
+							rect.getX() + rect.getWidth() - PLAYER_CENTER.getX()) + Math.PI * 2) % (Math.PI * 2);
+					double angle_tr = (Math.atan2(PLAYER_CENTER.getY() - rect.getY(),
+							rect.getX() + rect.getWidth() - PLAYER_CENTER.getX()) + Math.PI * 2) % (Math.PI * 2);
+					double angle_bl = (Math.atan2(PLAYER_CENTER.getY() - (rect.getY() + rect.getHeight()),
+							rect.getX() - PLAYER_CENTER.getX()) + Math.PI * 2) % (Math.PI * 2);
 
 					for (int i = 0; i < areas.length; i++) {
 						Polygon o = new Polygon();
@@ -563,14 +556,14 @@ public class Application extends JPanel {
 							o.addPoint((int) inner_first.getX(), (int) inner_first.getY());
 							if (i == 0) {
 								g.setColor(Color.WHITE);
-								g.fillRect((int) inner_first.x - Globals.OVERLAY_MARKER_SIZE / 2,
-										(int) inner_first.y - Globals.OVERLAY_MARKER_SIZE / 2,
+								g.fillRect((int) inner_first.getX() - Globals.OVERLAY_MARKER_SIZE / 2,
+										(int) inner_first.getY() - Globals.OVERLAY_MARKER_SIZE / 2,
 										Globals.OVERLAY_MARKER_SIZE, Globals.OVERLAY_MARKER_SIZE);
 							}
 						}
 
 						if (outer_first != null) {
-							o.addPoint((int) outer_first.getValue1().x, (int) outer_first.getValue1().y);
+							o.addPoint((int) outer_first.getValue1().getX(), (int) outer_first.getValue1().getY());
 							if (i == 0) {
 								g.setColor(Color.ORANGE);
 								g.fillRect((int) outer_first.getValue1().getX() - Globals.OVERLAY_MARKER_SIZE / 2,
@@ -638,11 +631,11 @@ public class Application extends JPanel {
 						}
 
 						if (inner_last != null) {
-							o.addPoint((int) inner_last.x, (int) inner_last.y);
+							o.addPoint((int) inner_last.getX(), (int) inner_last.getY());
 							if (i == 0) {
 								g.setColor(Color.GREEN);
-								g.fillRect((int) inner_last.x - Globals.OVERLAY_MARKER_SIZE / 2,
-										(int) inner_last.y - Globals.OVERLAY_MARKER_SIZE / 2,
+								g.fillRect((int) inner_last.getX() - Globals.OVERLAY_MARKER_SIZE / 2,
+										(int) inner_last.getY() - Globals.OVERLAY_MARKER_SIZE / 2,
 										Globals.OVERLAY_MARKER_SIZE, Globals.OVERLAY_MARKER_SIZE);
 							}
 						}
@@ -709,14 +702,14 @@ public class Application extends JPanel {
 				Rect r = SchemUtilities.schemToLocal(wall, location, Globals.PIXELS_PER_GRID());
 				Point obj = new Point(r.getX() + r.getWidth() / 2, r.getY() + r.getHeight() / 2);
 
-				Ellipse2D e2d2 = new Ellipse2D.Double(obj.x - Globals.LAMP_RADIUS, obj.y - Globals.LAMP_RADIUS,
+				Ellipse2D e2d2 = new Ellipse2D.Double(obj.getX() - Globals.LAMP_RADIUS, obj.getY() - Globals.LAMP_RADIUS,
 						Globals.LAMP_RADIUS * 2, Globals.LAMP_RADIUS * 2);
 
 				if (SHADOWS_MODE)
 					visibility.add(new Area(e2d2));
 
 				if (LIGHT_MODE) {
-					RadialGradientPaint rgp = new RadialGradientPaint(new Point2D.Double(obj.x, obj.y),
+					RadialGradientPaint rgp = new RadialGradientPaint(new Point2D.Double(obj.getX(), obj.getY()),
 							(float) Globals.LAMP_RADIUS,
 							new float[] { 0.0f, 0.5f, 1.0f },
 							new Color[] { Color.BLACK, new Color(0, 0, 0, 220), new Color(0, 0, 0, 0) });
@@ -759,6 +752,27 @@ public class Application extends JPanel {
 						(int) Math.floor(r.getHeight()));
 		}
 
+		if (enemy.getPath() != null) {
+			Path p = enemy.getPath();
+			final int psize = 3;
+			List<Point> points = p.getPathPoints();
+			for (Point point : points) {
+				Point p2 = SchemUtilities.schemToFramePoint(new Point(point.getX(), point.getY()), location,
+						Globals.PIXELS_PER_GRID());
+				g.drawOval((int) p2.getX() - psize, (int) p2.getY() - psize, psize * 2, psize * 2);
+			}
+			g.setStroke(new BasicStroke(4));
+			for (int i = 0; i < points.size() - 1; i++) {
+				Point current = points.get(i);
+				Point next = points.get(i + 1);
+				Point p1 = SchemUtilities.schemToFramePoint(new Point(current.getX(), current.getY()), location,
+						Globals.PIXELS_PER_GRID());
+				Point p2 = SchemUtilities.schemToFramePoint(new Point(next.getX(), next.getY()), location,
+						Globals.PIXELS_PER_GRID());
+				g.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY());
+			}
+		}
+
 		g.setColor(Color.RED);
 		g.setStroke(new BasicStroke(6));
 		if (EDIT_MODE) {
@@ -766,17 +780,17 @@ public class Application extends JPanel {
 					Globals.PIXELS_PER_GRID());
 
 			if (selection_type == 0 && select_point_store != null) {
-				Point newpoint2 = SchemUtilities.schemToLocalPoint(select_point_store, location,
+				Point newpoint2 = SchemUtilities.schemToFramePoint(select_point_store, location,
 						Globals.PIXELS_PER_GRID());
 					
-				Rect rdraw = Rect.fromPoints(newpoint1.x, newpoint1.y, newpoint2.x, newpoint2.y);
+				Rect rdraw = Rect.fromPoints(newpoint1.getX(), newpoint1.getY(), newpoint2.getX(), newpoint2.getY());
 				
 				g.drawRect((int)rdraw.getX(), (int)rdraw.getY(), (int)rdraw.getWidth(),
 						(int)rdraw.getHeight());
 			} else {
 				AppAsset a = assets.get(selectasset);
 				if (a != null) {
-					g.drawRect((int) newpoint1.x, (int) newpoint1.y,
+					g.drawRect((int) newpoint1.getX(), (int) newpoint1.getY(),
 							(int) (a.size.getWidth() * Globals.PIXELS_PER_GRID()),
 							(int) (a.size.getHeight() * Globals.PIXELS_PER_GRID()));
 				}
@@ -792,14 +806,14 @@ public class Application extends JPanel {
 		Point mouse = entry.peripherals.mousePos();
 		Point schem_mouse = SchemUtilities.schemPointFromFramePos(mouse, location, Globals.PIXELS_PER_GRID());
 		int z = 3;
-		g.fillOval((int) mouse.x - z, (int) mouse.y - z, 2 * z, 2 * z);
+		g.fillOval((int) mouse.getX() - z, (int) mouse.getY() - z, 2 * z, 2 * z);
 
 		g.setFont(DEBUG_TEXT);
 		String focus = selectasset;
 
 		g.drawString(String.format(
-				"raw=(%5.1f,%5.1f)  coord=(%5.1f,%5.1f) typing=%b focus=[%s] select_type=%d debug_val=[%s]", mouse.x,
-				mouse.y, schem_mouse.x, schem_mouse.y, typing, focus, selection_type, debug_vals.toString()), 20,
+				"raw=(%5.1f,%5.1f)  coord=(%5.1f,%5.1f) typing=%b focus=[%s] select_type=%d debug_val=[%s] tick=%d", mouse.getX(),
+				mouse.getY(), schem_mouse.getX(), schem_mouse.getY(), typing, focus, selection_type, debug_vals.toString(), entry.tick), 20,
 				g.getFontMetrics().getAscent() + 20);
 
 		if (EDIT_MODE) {
@@ -840,12 +854,34 @@ public class Application extends JPanel {
 		if (entry.tick - last_fire_tick < gun.FIRING_DELAY()) {
 			int size1 = 14;
 			double percent = ((entry.tick - last_fire_tick) * 1.0f / gun.FIRING_DELAY());
-			g.drawArc((int) mousepos.x - size1, (int) mousepos.y - size1, 2 * size1, 2 * size1, 0,
+			g.drawArc((int) mousepos.getX() - size1, (int) mousepos.getY() - size1, 2 * size1, 2 * size1, 0,
 					(int) (360 * percent));
 		}
 	}
 
 	void drawDebug(Graphics2D g) {
+		g.setColor(Color.GREEN);
+		g.setStroke(new BasicStroke(1));
+
+		if (SHOW_GRID) {
+			for (int x1 = (int) TOPLEFT_BOUND.getX(); x1 < BOTTOMRIGHT_BOUND.getX(); x1++) {
+				for (int y1 = (int) TOPLEFT_BOUND.getY(); y1 < BOTTOMRIGHT_BOUND.getY(); y1++) {
+					Point p = new Point(x1 * Globals.PIXELS_PER_GRID() - location.getX(),
+							y1 * Globals.PIXELS_PER_GRID() - location.getY());
+
+					Rect r1 = new Rect((int) p.getX(), (int) p.getY(), (int) (Globals.PIXELS_PER_GRID()),
+							(int) (Globals.PIXELS_PER_GRID()));
+					if (inScreenSpace(r1)) {
+						g.drawLine((int) Math.floor(p.getX()), (int) Math.floor(p.getY()), (int) Math.floor(p.getX()),
+								(int) Math.floor(p.getY() + Globals.PIXELS_PER_GRID()));
+
+						g.drawLine((int) Math.floor(p.getX()), (int) Math.floor(p.getY()),
+								(int) Math.floor(p.getX() + Globals.PIXELS_PER_GRID()),
+								(int) Math.floor(p.getY()));
+					}
+				}
+			}
+		}
 
 		if (SHOW_ASSETS_MENU) {
 			ArrayList<String> keys = new ArrayList<String>(assets.keySet());
@@ -900,8 +936,8 @@ public class Application extends JPanel {
 			g.fillRect((int) bound.getX(), (int) bound.getY(), (int) bound.getWidth(), (int) bound.getHeight());
 
 			g.setColor(Color.LIGHT_GRAY);
-			g.fillRect((int) bound.x,
-					(int) (bound.y + VERT_SPACING + (debug_selection) * (text_height + VERT_MID_SPACING)),
+			g.fillRect((int) bound.getX(),
+					(int) (bound.getY() + VERT_SPACING + (debug_selection) * (text_height + VERT_MID_SPACING)),
 					(int) bound.width, (int) text_height + 8);
 
 			g.setColor(Color.WHITE);
@@ -920,8 +956,8 @@ public class Application extends JPanel {
 					e.printStackTrace();
 				}
 
-				g.drawString(name, (int) (bound.x + SIDE_SPACING),
-						(int) (bound.y + (i + 1) * text_height + (i) * VERT_MID_SPACING + VERT_SPACING));
+				g.drawString(name, (int) (bound.getX() + SIDE_SPACING),
+						(int) (bound.getY() + (i + 1) * text_height + (i) * VERT_MID_SPACING + VERT_SPACING));
 			}
 		}
 	}
@@ -945,14 +981,14 @@ public class Application extends JPanel {
 		g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_OFF);
 
 		LEVEL_SCREEN_SPACE = new Rect(
-				Math.max(0, (TOPLEFT_BOUND.x) * Globals.PIXELS_PER_GRID() - location.x),
-				Math.max(0, (TOPLEFT_BOUND.y) * Globals.PIXELS_PER_GRID() - location.y),
-				MathUtil.min_(BOTTOMRIGHT_BOUND.x * Globals.PIXELS_PER_GRID() - location.x,
-						getWidth() - TOPLEFT_BOUND.x * Globals.PIXELS_PER_GRID() + location.x,
-						(BOTTOMRIGHT_BOUND.x - TOPLEFT_BOUND.x) * Globals.PIXELS_PER_GRID(), getWidth()),
-				MathUtil.min_(BOTTOMRIGHT_BOUND.y * Globals.PIXELS_PER_GRID() - location.y,
-						getHeight() - TOPLEFT_BOUND.y * Globals.PIXELS_PER_GRID() + location.y,
-						(BOTTOMRIGHT_BOUND.y - TOPLEFT_BOUND.y) * Globals.PIXELS_PER_GRID(), getHeight()));
+				Math.max(0, (TOPLEFT_BOUND.getX()) * Globals.PIXELS_PER_GRID() - location.getX()),
+				Math.max(0, (TOPLEFT_BOUND.getY()) * Globals.PIXELS_PER_GRID() - location.getY()),
+				MathUtil.min_(BOTTOMRIGHT_BOUND.getX() * Globals.PIXELS_PER_GRID() - location.getX(),
+						getWidth() - TOPLEFT_BOUND.getX() * Globals.PIXELS_PER_GRID() + location.getX(),
+						(BOTTOMRIGHT_BOUND.getX() - TOPLEFT_BOUND.getX()) * Globals.PIXELS_PER_GRID(), getWidth()),
+				MathUtil.min_(BOTTOMRIGHT_BOUND.getY() * Globals.PIXELS_PER_GRID() - location.getY(),
+						getHeight() - TOPLEFT_BOUND.getY() * Globals.PIXELS_PER_GRID() + location.getY(),
+						(BOTTOMRIGHT_BOUND.getY() - TOPLEFT_BOUND.getY()) * Globals.PIXELS_PER_GRID(), getHeight()));
 
 		Graphics2D dispG = (Graphics2D) display.getGraphics();
 		Graphics2D extraG = (Graphics2D) extra.getGraphics();
@@ -998,6 +1034,16 @@ public class Application extends JPanel {
 		g.setStroke(new BasicStroke(4));
 		g.drawRect(0, 0, this.getWidth(), this.getHeight());
 
+
+		int z = 5;
+		g.setColor(Color.RED);
+		Point enemyP = SchemUtilities.schemToFramePoint(new Point(enemy.getX(), enemy.getY()), location, Globals.PIXELS_PER_GRID());
+		g.fillOval((int)enemyP.getX()-z, (int)enemyP.getY()-z, z*2, z*2);
+
+		g.setColor(Color.YELLOW);
+		Rect rnew = SchemUtilities.schemToLocal(enemy, location, Globals.PIXELS_PER_GRID());
+		g.fillOval((int) (rnew.getX()-rnew.getWidth()/2), (int) (rnew.getY()-rnew.getHeight()/2), (int) rnew.width, (int) rnew.height);
+
 	}
 
 	/*
@@ -1034,8 +1080,8 @@ public class Application extends JPanel {
 	}
 
 	public Pair<String, Point> PointOnScreenEdge(double angle, Point start_point) {
-		double x0 = start_point.x;
-		double y0 = start_point.y;
+		double x0 = start_point.getX();
+		double y0 = start_point.getY();
 
 		double slope = Math.tan(angle);
 		int dx = (int) Math.copySign(1, Math.cos(angle));
@@ -1073,8 +1119,8 @@ public class Application extends JPanel {
 					select_point_store = SchemUtilities.schemPointFromFramePos(pos, location,
 							Globals.PIXELS_PER_GRID());
 				else {
-					Rect r = Rect.fromPoints(select_point_1.x, select_point_1.y, select_point_store.x,
-							select_point_store.y);
+					Rect r = Rect.fromPoints(select_point_1.getX(), select_point_1.getY(), select_point_store.getX(),
+							select_point_store.getY());
 					Collider c = new Collider(r);
 					newColliders.add(c);
 					select_point_store = null;
@@ -1083,7 +1129,7 @@ public class Application extends JPanel {
 			} else if (selection_type == 1) {
 				AppAsset a = assets.get(selectasset);
 
-				Rect r = new Rect(select_point_1.x, select_point_1.y, a.size.getWidth(),
+				Rect r = new Rect(select_point_1.getX(), select_point_1.getY(), a.size.getWidth(),
 						a.size.getHeight());
 
 				LevelWall c = new LevelWall(r.getX(), r.getY(), r.getWidth(), r.getHeight(), 0.0f, selectasset);
@@ -1091,7 +1137,7 @@ public class Application extends JPanel {
 			} else if (selection_type == 2) {
 				AppAsset a = assets.get(selectasset);
 
-				Rect r = new Rect(select_point_1.x, select_point_1.y, a.size.getWidth(),
+				Rect r = new Rect(select_point_1.getX(), select_point_1.getY(), a.size.getWidth(),
 						a.size.getHeight());
 
 				LevelTile c = new LevelTile(r.getX(), r.getY(), r.getWidth(), r.getHeight(), 0.0f, selectasset);
@@ -1099,7 +1145,7 @@ public class Application extends JPanel {
 			} else if (selection_type == 0) {
 				AppAsset a = assets.get(selectasset);
 
-				Rect r = new Rect(select_point_1.x, select_point_1.y, a.size.getWidth(),
+				Rect r = new Rect(select_point_1.getX(), select_point_1.getY(), a.size.getWidth(),
 						a.size.getHeight());
 
 				Collider c = new Collider(r.getX(), r.getY(), r.getWidth(), r.getHeight());
@@ -1125,11 +1171,14 @@ public class Application extends JPanel {
 			System.out.println("WRONG MAG INSERTED");
 		}
 
-		Point arm = new Point(PLAYER_SCREEN_LOC.x + location.x + Globals.PLAYER_SIZE / 2,
-				PLAYER_SCREEN_LOC.y + location.y + Globals.PLAYER_SIZE / 2);
-		Point start = new Point(arm.x + Globals.BULLET_DEFAULT_DISTANCE * Math.cos(looking_angle),
-				arm.y + Globals.BULLET_DEFAULT_DISTANCE * Math.sin(looking_angle));
-		Bullet b = new Bullet(start.x, start.y, g.BULLET_SIZE(), looking_angle,
+		Point arm = new Point(PLAYER_SCREEN_LOC.getX() + location.getX() + Globals.PLAYER_SIZE / 2,
+				PLAYER_SCREEN_LOC.getY() + location.getY() + Globals.PLAYER_SIZE / 2);
+		Point start = new Point(arm.getX() + Globals.BULLET_DEFAULT_DISTANCE * Math.cos(looking_angle),
+				arm.getY() + Globals.BULLET_DEFAULT_DISTANCE * Math.sin(looking_angle));
+
+		Point end = new Point(start.getX() / Globals.PIXELS_PER_GRID(),
+				start.getY()/ Globals.PIXELS_PER_GRID());
+		Bullet b = new Bullet(end.getX(), end.getY(), g.BULLET_SIZE()*Globals.BULLET_SIZE_MULT, looking_angle,
 				g.mag.BULLET_INITIAL_SPEED() * Globals.BULLET_SPEED_MULT);
 		bullets.add(b);
 
@@ -1220,8 +1269,8 @@ public class Application extends JPanel {
 
 		if (game) {
 			looking_angle = (Math.atan2(
-					(PLAYER_SCREEN_LOC.y+PLAYER_SCREEN_LOC.height/2)-entry.peripherals.mousePos().y,
-					(PLAYER_SCREEN_LOC.x+PLAYER_SCREEN_LOC.width/2)-entry.peripherals.mousePos().x)) % (2 * Math.PI)
+					(PLAYER_SCREEN_LOC.getY()+PLAYER_SCREEN_LOC.height/2)-entry.peripherals.mousePos().getY(),
+					(PLAYER_SCREEN_LOC.getX()+PLAYER_SCREEN_LOC.width/2)-entry.peripherals.mousePos().getX())) % (2 * Math.PI)
 					+ Math.PI;
 
 			short intent_x = 0;
@@ -1275,11 +1324,11 @@ public class Application extends JPanel {
 				if (ret != null) {
 					if (ret.y_collision) {
 						component_y = 0;
-						location.y += Math.copySign(1, velocity.getY()) * -ret.disp_y;
+						location.setY(location.getY()+ Math.copySign(1, velocity.getY()) * -ret.disp_y);
 					}
 					if (ret.x_collision) {
 						component_x = 0;
-						location.x += Math.copySign(1, velocity.getX()) * ret.disp_x;
+						location.setX(location.getX()+ Math.copySign(1, velocity.getX()) * ret.disp_x);
 					}
 				}
 			}
@@ -1289,7 +1338,7 @@ public class Application extends JPanel {
 
 				for (int i = 0; i < bullets.size(); i++) {
 					Bullet b = bullets.get(i);
-					Rect bullet = new Rect(b.x - location.x, b.y - location.y, b.width, b.height);
+					Rect bullet = new Rect(b.getX(), b.getY(), b.width, b.height);
 					double dx = b.speed * Math.cos(b.angle);
 					double dy = b.speed * Math.sin(b.angle);
 
@@ -1300,22 +1349,23 @@ public class Application extends JPanel {
 					b.speed = new_speed;
 					b.angle = new_angle;
 
-					boolean ret = CollisionUtil.staticCollision(bullet, collider);
+					Rect br = SchemUtilities.schemToLocal(bullet, location, Globals.PIXELS_PER_GRID());
+					boolean ret = CollisionUtil.staticCollision(br, collider);
 
-					if (ret || Math.sqrt(Math.pow(bullet.x, 2) + Math.pow(bullet.y, 2)) > 4000) {
+					if (ret || Math.sqrt(Math.pow(bullet.getX(), 2) + Math.pow(bullet.getY(), 2)) > 4000) {
 						bullets.remove(i);
 						i--;
 					} else {
-						b.x += dx;
-						b.y += dy;
+						b.setX(b.getX() + dx);
+						b.setY(b.getY() + dy);
 					}
 				}
 
 			}
 		}
 
-		location.x += component_x;
-		location.y -= component_y;
+		location.setX(location.getX()+component_x);
+		location.setY(location.getY()- component_y);
 	}
 
 	/*
@@ -1376,14 +1426,14 @@ public class Application extends JPanel {
 		all.addAll(newTiles.stream().map(c -> (Rect) c).collect(Collectors.toList()));
 
 		for (Rect o : all) {
-			if (o.getX() < TOPLEFT_BOUND.x)
-				TOPLEFT_BOUND.x = o.getX();
-			if (o.getX() + o.getWidth() > BOTTOMRIGHT_BOUND.x)
-				BOTTOMRIGHT_BOUND.x = o.getX() + o.getWidth();
-			if (o.getY() < TOPLEFT_BOUND.y)
-				TOPLEFT_BOUND.y = o.getY();
-			if (o.getY() + o.getHeight() > BOTTOMRIGHT_BOUND.y)
-				BOTTOMRIGHT_BOUND.y = o.getY() + o.getHeight();
+			if (o.getX() < TOPLEFT_BOUND.getX())
+				TOPLEFT_BOUND.setX(o.getX());
+			if (o.getX() + o.getWidth() > BOTTOMRIGHT_BOUND.getX())
+				BOTTOMRIGHT_BOUND.setX(o.getX() + o.getWidth());
+			if (o.getY() < TOPLEFT_BOUND.getY())
+				TOPLEFT_BOUND.setY(o.getY());
+			if (o.getY() + o.getHeight() > BOTTOMRIGHT_BOUND.getY())
+				BOTTOMRIGHT_BOUND.setY(o.getY() + o.getHeight());
 		}
 	}
 
@@ -1401,6 +1451,10 @@ public class Application extends JPanel {
 	 */
 	boolean inScreenSpace(Rect r) {
 		return CollisionUtil.staticCollision(new Rect(0, 0, this.getWidth(), this.getHeight()), r);
+	}
+
+	Point playerSchemPos() {
+		return SchemUtilities.schemPointFromFramePos(new Point((PLAYER_SCREEN_LOC.x),(PLAYER_SCREEN_LOC.y)), location, Globals.PIXELS_PER_GRID());
 	}
 
 	void paintColorRect(Graphics g, ColorRect rect, double depth) {

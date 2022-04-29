@@ -2,7 +2,7 @@ package util;
 
 public class SchemUtilities {
 
-    public static Point schemToLocalPoint(Point r, Point location, double GRIDSIZE) {
+    public static Point schemToFramePoint(Point r, Point location, double GRIDSIZE) {
     	/// multiply by GRIDSIZE, subtract camera location
     	return new Point(r.getX() * GRIDSIZE - location.x, r.getY() * GRIDSIZE - location.y);
     }
@@ -15,7 +15,7 @@ public class SchemUtilities {
 	
 	public static Point roundSchemFramePoint(Point p, Point location, double GRIDSIZE) {
 		Point p2 = SchemUtilities.schemPointFromFramePos(p, location, GRIDSIZE);
-		return SchemUtilities.schemToLocalPoint(p2, location, GRIDSIZE);
+		return SchemUtilities.schemToFramePoint(p2, location, GRIDSIZE);
 	}
 
 	public static Rect schemToLocalZ(Rect r, Rect PLAYER_SCREEN_LOC, Point location, double depth, double GRIDSIZE) {

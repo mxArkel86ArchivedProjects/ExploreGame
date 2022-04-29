@@ -7,7 +7,12 @@ public class CollisionReturn {
 	public boolean x_collision;
 	public double disp_x;
 	public double disp_y;
-	public CollisionReturn(){
 
+	public CollisionReturn() {
+
+	}
+
+	public boolean colliding() {
+		return x_collision || y_collision;
 	}
 }
