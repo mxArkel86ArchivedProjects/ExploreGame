@@ -7,6 +7,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.awt.Graphics2D;
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -14,10 +15,10 @@ import java.awt.Color;
 import org.javatuples.Pair;
 
 public class PathFinding {
-    public static Path PathFind(PathNode start, PathNode end, Function<Pair<Point, Point>, Boolean> inMap) {
+    public static Path PathFind(PathNode start, PathNode end, Function<Pair<IntPoint, IntPoint>, Boolean> inMap) {
         Queue<PathNode> queue = new LinkedList<>();
         queue.add(start);
-        List<Point> visited = new ArrayList<>();
+        List<IntPoint> visited = new ArrayList<>();
 
         List<PathNode> add_node = new ArrayList<>();
         System.out.println("start: " + start.getPoint().getX() + "," + start.getPoint().getY() + " end: "
@@ -37,7 +38,7 @@ public class PathFinding {
                 visited.add(node.getPoint());
                 for (PathNode neighbor : getNeighbors(node)) {
                     if (!visited.contains(neighbor.getPoint()) && !queue.contains(neighbor)) {
-                        Pair<Point, Point> points = Pair.with(node.getPoint(), neighbor.getPoint());
+                        Pair<IntPoint, IntPoint> points = Pair.with(node.getPoint(), neighbor.getPoint());
                         if (inMap == null || inMap.apply(points)) {
                             add_node.add(neighbor);
                         }
@@ -50,33 +51,70 @@ public class PathFinding {
         return null;
     }
 
-    public static void displayPath(Graphics2D g, List<List<PathNode>> layers, Point location, double GRIDSIZE, Function<Pair<Point, Point>, Boolean> inMap) {
+    private static int pathGetDepth(List<PathNode> layer) {
+        List<PathNode> nodes = new ArrayList<>();
+        nodes.addAll(layer);
+
+        int depth = 0;
+        while (nodes.size() > 0) {
+            depth++;
+            for (int i = 0; i < nodes.size(); i++) {
+                PathNode node = nodes.get(i);
+                if (node.parent != null) {
+                    nodes.remove(i);
+                    nodes.add(i, node.parent);
+                } else {
+                    nodes.remove(i);
+                    i--;
+                }
+            }
+        }
+        return depth;
+    }
+
+    public static void displayPath(Graphics2D g, List<PathNode> layers, Point location, double GRIDSIZE,
+            Function<Pair<IntPoint, IntPoint>, Boolean> inMap) {
         g.setStroke(new BasicStroke(3));
-        for (int i = 0; i < layers.size(); i++) {
-            List<PathNode> layer = layers.get(i);
-            
-            Color c = Color.getHSBColor(i*0.4f/layers.size(), 1, 1);
+
+        List<PathNode> nodes = new ArrayList<>();
+        nodes.addAll(layers);
+
+        int depth = pathGetDepth(nodes);
+        
+        int i = 0;
+        while (nodes.size() > 0) {
+            Color c = Color.getHSBColor(i * 0.4f / depth, 1, 1);
             g.setColor(c);
-            for (PathNode node : layer) {
-                if(node.parent==null)
-                    continue;
-                Point p1 = SchemUtilities.schemToFrame(node.getPoint(), location, GRIDSIZE);
-                Point p2 = SchemUtilities.schemToFrame(node.parent.getPoint(), location, GRIDSIZE);
-                g.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY());
+            i++;
+            for (int j = 0; j < nodes.size(); j++) {
+                PathNode node = nodes.get(j);
+
+                if (node.parent == null)
+                    nodes.remove(j);
+                else {
+                    nodes.remove(j);
+                    nodes.add(j, node.parent);
+                    Point p1 = SchemUtilities.schemToFrame(new Point(node.getPoint().getX()+0.5, node.getPoint().getY()+0.5), location, GRIDSIZE);
+                    Point p2 = SchemUtilities.schemToFrame(new Point(node.parent.getPoint().getX()+0.5, node.parent.getPoint().getY()+0.5), location, GRIDSIZE);
+                    g.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY());
+                }
+                
+                
             }
         }
     }
+    
 
-    public static List<List<PathNode>> PathFindDebug(PathNode start, int max_iterations, Function<Pair<Point, Point>, Boolean> inMap) {
+    public static List<PathNode> PathFindDebug(PathNode start, int max_iterations, Function<Pair<IntPoint, IntPoint>, Boolean> inMap) {
         Queue<PathNode> queue = new LinkedList<>();
         queue.add(start);
-        List<Point> visited = new ArrayList<>();
+        List<IntPoint> visited = new ArrayList<>();
 
         List<PathNode> add_node = new ArrayList<>();
-        
-        List<List<PathNode>> layers = new ArrayList<>();
-        
 
+        List<PathNode> finalNodes = new ArrayList<>();
+        
+    
         int iterations = 0;
         while (queue.size() > 0 || iterations > max_iterations) {
             if (queue.size() > 1000)
@@ -90,7 +128,7 @@ public class PathFinding {
                 visited.add(node.getPoint());
                 for (PathNode neighbor : getNeighbors(node)) {
                     if (!visited.contains(neighbor.getPoint()) && !queue.contains(neighbor)) {
-                        Pair<Point, Point> points = Pair.with(node.getPoint(), neighbor.getPoint());
+                        Pair<IntPoint, IntPoint> points = Pair.with(node.getPoint(), neighbor.getPoint());
                         if (inMap == null || inMap.apply(points)) {
                             add_node.add(neighbor);
                         }
@@ -99,20 +137,19 @@ public class PathFinding {
             }
             queue.addAll(add_node);
             add_node.clear();
-            layers.add(layer);
+            finalNodes = queue.stream().collect(Collectors.toList());
         }
-        return layers;
+        return finalNodes;
     }
 
-    private static List<Point> getPath(PathNode node, PathNode start) {
-        List<Point> path = new ArrayList<>();
-        final double z = 0.5f;
+    private static List<IntPoint> getPath(PathNode node, PathNode start) {
+        List<IntPoint> path = new ArrayList<>();
         while (node.parent != null) {
 
-            path.add(new Point(node.getPoint().getX() + z, node.getPoint().getY() + z));
+            path.add(node.getPoint());
             node = node.parent;
         }
-        path.add(new Point(start.getPoint().getX() + z, start.getPoint().getY() + z));
+        path.add(start.getPoint());
         Collections.reverse(path);
         return path;
     }
@@ -122,11 +159,11 @@ public class PathFinding {
                 new PathNode(node.getPoint().x + 1, node.getPoint().y, node), // right
                 new PathNode(node.getPoint().x - 1, node.getPoint().y, node), // left
                 new PathNode(node.getPoint().x, node.getPoint().y - 1, node), // down
-                new PathNode(node.getPoint().x, node.getPoint().y + 1, node)// ,//,//up
-        // new PathNode(node.getPoint().x+1, node.getPoint().y+1, node),//right-up
-        // new PathNode(node.getPoint().x-1, node.getPoint().y-1, node),//left-down
-        // new PathNode(node.getPoint().x+1, node.getPoint().y-1, node),//right-down
-        // new PathNode(node.getPoint().x-1, node.getPoint().y+1, node)//left-up
+                new PathNode(node.getPoint().x, node.getPoint().y + 1, node),// ,//,//up
+        new PathNode(node.getPoint().x+1, node.getPoint().y+1, node),//right-up
+        new PathNode(node.getPoint().x-1, node.getPoint().y-1, node),//left-down
+        new PathNode(node.getPoint().x+1, node.getPoint().y-1, node),//right-down
+        new PathNode(node.getPoint().x-1, node.getPoint().y+1, node)//left-up
         );
         return neighbors;
     }

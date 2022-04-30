@@ -37,9 +37,14 @@ public class SchemUtilities {
     // 	return new Rect(p.x, p.y, r.getWidth() * GRIDSIZE, r.getHeight() * GRIDSIZE);
     // }
 
-    public static Point frameToSchem(Point p, Point location, double GRIDSIZE) {
-    	return new Point(Math.round((p.getX() + location.getX()) / GRIDSIZE),
-    			Math.round((p.getY() + location.getY()) / GRIDSIZE));
+	public static Point frameToSchem(Point p, Point location, double GRIDSIZE) {
+		return new Point((p.getX() + location.getX()) / GRIDSIZE,
+				(p.getY() + location.getY()) / GRIDSIZE);
+	}
+	
+	public static IntPoint frameToSchemInt(Point p, Point location, double GRIDSIZE) {
+    	return new IntPoint((int)Math.floor((p.getX() + location.getX()) / GRIDSIZE),
+    			(int)Math.floor((p.getY() + location.getY()) / GRIDSIZE));
     }
     
 }

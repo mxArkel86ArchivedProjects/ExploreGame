@@ -30,8 +30,8 @@ public class Enemy {
         if (index >= p.path.size() - 1)
             return;
 
-        Point p1 = p.getPathPoints().get(index);
-        Point p2 = p.getPathPoints().get(index + 1);
+        IntPoint p1 = p.getPathPoints().get(index);
+        IntPoint p2 = p.getPathPoints().get(index + 1);
         double dist = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
 
         double dx = p2.x == p1.x ? 0 : (p2.x - p1.x) / dist * speed;
@@ -54,38 +54,42 @@ public class Enemy {
     public Point getPos() {
         return pos;
     }
+
+    public IntPoint getIntPos() {
+        return new IntPoint((int) pos.x, (int) pos.y);
+    }
     
     public double getSize() {
         return size;
     }
 
-    public void updatePath(Point p2, Point location, double GRIDSIZE) {
+    public void updatePath(IntPoint start, IntPoint end, Point location, double GRIDSIZE) {
         index = 0;
         t = 0;
-		Point p1 = new Point(pos.x, pos.y);
 
-		Path path = PathFinding.PathFind(new PathNode((int)(p1.getX()), (int)(p1.getY()), null), new PathNode((int)p2.getX(), (int)p2.getY(), null),
-				check);
+        Path path = PathFinding.PathFind(new PathNode((int) (start.getX()), (int) (start.getY()), null),
+                new PathNode((int) end.getX(), (int) end.getY(), null),
+                check);
         if (path != null) {
             this.p = path;
-            p.path.add(0, p1);
+            // p.path.add(0, p1);
             //path.optimizePath();
         } else {
             this.p = null;
         }
-	}
+    }
 
     public Path getPath() {
         return p;
     }
 
-    public static final Function<Pair<Point, Point>, Boolean> check = new Function<Pair<Point, Point>, Boolean>() {
+    public static final Function<Pair<IntPoint, IntPoint>, Boolean> check = new Function<Pair<IntPoint, IntPoint>, Boolean>() {
         @Override
-        public Boolean apply(Pair<Point, Point> p) {
-            Point pstart = p.getValue0();
-            Point pend = p.getValue1();
+        public Boolean apply(Pair<IntPoint, IntPoint> p) {
+            IntPoint pstart = p.getValue0();
+            IntPoint pend = p.getValue1();
 
-            Rect r = new Rect(pstart, pend);
+            Rect r = new Rect(pstart.DPoint(), pend.DPoint());
             
             boolean inMap = (pend.getX() >= r.left() - Globals.PATH_BUFFER
                     && pend.getX() <= r.right() + Globals.PATH_BUFFER
@@ -102,14 +106,11 @@ public class Enemy {
             // double dx = pend.getX() - pstart.getX();
             // double dy = pend.getY() - pstart.getY();
 
-            Point p1 = new Point(Math.round(pstart.getX()), Math.round(pstart.getY()));
-            Point p2 = new Point(Math.round(pend.getX()), Math.round(pend.getY()));
-
-            Line cross = new Line(p1, p2);
+            Line cross = new Line(pstart.DPoint(), pend.DPoint());
 
             for (Collider c : entry.app.colliders) {
-                
-                boolean collided = CollisionUtil.LineLineIntersection(cross,c);
+                Line c_line = new Line(c.getX1()-0.5, c.getY1()-0.5, c.getX2()-0.5, c.getY2()-0.5);
+                boolean collided = CollisionUtil.LineLineIntersection(cross,c_line);
                 if (collided) {
                     return false;
                 }

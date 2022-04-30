@@ -1,15 +1,20 @@
 package util;
 
 public class PathNode {
-    Point pt;
+    IntPoint pt;
     PathNode parent = null;
     
-    public PathNode(double i, double y, PathNode node) {
-        pt = new Point(i, y);
+    public PathNode(int i, int y, PathNode node) {
+        pt = new IntPoint(i, y);
         parent = node;
     }
 
-    Point getPoint() {
+    public PathNode(IntPoint pt, PathNode node) {
+        this.pt = pt;
+        parent = node;
+    }
+
+    IntPoint getPoint() {
         return pt;
     }
     

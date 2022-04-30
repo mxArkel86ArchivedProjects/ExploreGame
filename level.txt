@@ -159,7 +159,7 @@ red,ff0000
 black,000000
 
 [checkpoint]
-start,18,26
+start,40,34
 
 [resetbox]
 #start,75,62,102,65

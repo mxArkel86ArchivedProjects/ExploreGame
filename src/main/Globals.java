@@ -18,7 +18,7 @@ public class Globals {
 	public static final int PATH_BUFFER = 6;
 	public static final int PIXELS_RESIZE = 64;
 	// APPLICATION PARAMS
-	public static final double PLAYER_SIZE = 72;
+	public static final double PLAYER_SIZE = 30;
 	public static final double PLAYER_ACCELERATION = 0.1;
 	public static final double PLAYER_MAX_SPEED = 2.8;
 	public static final double PLAYER_FRICTION = 0.1;

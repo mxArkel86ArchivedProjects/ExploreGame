@@ -4,15 +4,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Path {
-    List<Point> path;
+    List<IntPoint> path;
     boolean optimized;
 
-    public Path(List<Point> path) {
+    public Path(List<IntPoint> path) {
         this.path = path;
         this.optimized = false;
     }
     
-    public List<Point> getPathPoints() {
+    public List<IntPoint> getPathPoints() {
         return path;
     }
 
@@ -20,14 +20,14 @@ public class Path {
         if (optimized) {
             return;
         }
-        List<Point> optimizedPath = new ArrayList<>();
+        List<IntPoint> optimizedPath = new ArrayList<>();
         
         optimizedPath.add(path.get(0));
         double prevdirection = directionFromPoints(path.get(1), path.get(0)); // 0 = right, 1 = top-right, 2 = top, 3 = top-left, 4 = left, 5 = bottom-left, 6 = bottom, 7 = bottom-right
         
         for (int i = 1; i < path.size() - 1; i++) {
-            Point current = path.get(i);
-            Point prev = null;
+            IntPoint current = path.get(i);
+            IntPoint prev = null;
 
             
             prev = path.get(i - 1);
@@ -54,7 +54,7 @@ public class Path {
         path = optimizedPath;
     }
 
-    private static double directionFromPoints(Point current, Point prev) {
+    private static double directionFromPoints(IntPoint current, IntPoint prev) {
             // if (current.x > prev.x && current.y == prev.y)
             //     return 0;
             // else if (current.x > prev.x && current.y > prev.y)

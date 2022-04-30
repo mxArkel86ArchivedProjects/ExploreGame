@@ -2,16 +2,41 @@ package util;
 
 public class CollisionUtil {
 
+	//check if two line segments intersect
 	public static boolean LineLineIntersection(Line l1, Line l2) {
-		return ccw(l1.getP1(), l1.getP2(), l2.getP1()) != ccw(l1.getP1(), l1.getP2(), l2.getP2())
-				&& ccw(l2.getP1(), l2.getP2(), l1.getP1()) != ccw(l2.getP1(), l2.getP2(), l1.getP2());
+		double x1 = l1.getP1().getX();
+		double y1 = l1.getP1().getY();
+		double x2 = l1.getP2().getX();
+		double y2 = l1.getP2().getY();
+		double x3 = l2.getP1().getX();
+		double y3 = l2.getP1().getY();
+		double x4 = l2.getP2().getX();
+		double y4 = l2.getP2().getY();
+		
+		double denom = (x1-x2)*(y3-y4) - (y1-y2)*(x3-x4);
+		if (denom == 0) {
+			return false;
+		}
+		
+		double xi = ((x3-x4)*(x1*y2-y1*x2)-(x1-x2)*(x3*y4-y3*x4))/denom;
+		double yi = ((y3-y4)*(x1*y2-y1*x2)-(y1-y2)*(x3*y4-y3*x4))/denom;
+		
+		if (xi < Math.min(x1, x2) || xi > Math.max(x1, x2)) {
+			return false;
+		}
+		if (xi < Math.min(x3, x4) || xi > Math.max(x3, x4)) {
+			return false;
+		}
+		if (yi < Math.min(y1, y2) || yi > Math.max(y1, y2)) {
+			return false;
+		}
+		if (yi < Math.min(y3, y4) || yi > Math.max(y3, y4)) {
+			return false;
+		}
+		
+		return true;
+	}
 
-	}
-	
-	private static boolean ccw(Point p1, Point p2, Point p3) {
-		return (p2.getX() - p1.getX()) * (p3.getY() - p1.getY())
-				- (p2.getY() - p1.getY()) * (p3.getX() - p1.getX()) > 0;
-	}
 	
 	public static boolean RectRectIntersection(Rect a, Rect b) {
 		boolean inline_y_axis = a.left() < b.right() && a.right() > b.left();
@@ -27,15 +52,6 @@ public class CollisionUtil {
 		boolean collide_y = inline_y_axis && (clip_on_top || clip_on_bottom || inline_x_axis);
 		return collide_x || collide_y;
 	}
-	/*
-	def ccw(A,B,C):
-    return (C.y-A.y) * (B.x-A.x) > (B.y-A.y) * (C.x-A.x)
-
-# Return true if line segments AB and CD intersect
-def intersect(A,B,C,D):
-    return ccw(A,C,D) != ccw(B,C,D) and ccw(A,B,C) != ccw(A,B,D)
-
-	*/
 
 	// public static CollisionReturn SchemDynamicCollision(Rect a, Rect b, double dx, double dy) {
 	// 	return CollisionRaw(a, b, dx, dy);

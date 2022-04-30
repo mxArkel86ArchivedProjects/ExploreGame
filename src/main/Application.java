@@ -56,6 +56,7 @@ import util.CollisionReturn;
 import util.CollisionUtil;
 import util.Enemy;
 import util.ImageImport;
+import util.IntPoint;
 import util.LevelConfigUtil;
 import util.Line;
 import util.MathUtil;
@@ -109,7 +110,7 @@ public class Application extends JPanel {
 	Vector velocity = new Vector(0, 0);
 	Vector intent = new Vector(1, 0);
 
-	Enemy enemy = new Enemy(24,24,40);
+	Enemy enemy = new Enemy(38,45,40);
 
 	/*
 	 * SELECTOR VARIABLES
@@ -148,7 +149,7 @@ public class Application extends JPanel {
 
 	int select_val = 0;
 
-	List<List<PathNode>> layers = null;
+	List<PathNode> layers = null;
 
 	/*
 	 * INIT METHOD
@@ -754,19 +755,20 @@ public class Application extends JPanel {
 		if (enemy.getPath() != null) {
 			Path p = enemy.getPath();
 			final int psize = 3;
-			List<Point> points = p.getPathPoints();
-			for (Point point : points) {
-				Point p2 = SchemUtilities.schemToFrame(new Point(point.getX(), point.getY()), location,
+			List<IntPoint> points = p.getPathPoints();
+			for (IntPoint point : points) {
+				Point p2 = SchemUtilities.schemToFrame(new Point(point.getX()+0.5, point.getY()+0.5), location,
 						Globals.PIXELS_PER_GRID());
 				g.drawOval((int) p2.getX() - psize, (int) p2.getY() - psize, psize * 2, psize * 2);
 			}
 			g.setStroke(new BasicStroke(4));
 			for (int i = 0; i < points.size() - 1; i++) {
-				Point current = points.get(i);
-				Point next = points.get(i + 1);
-				Point p1 = SchemUtilities.schemToFrame(new Point(current.getX(), current.getY()), location,
+				IntPoint current = points.get(i);
+				IntPoint next = points.get(i + 1);
+				
+				Point p1 = SchemUtilities.schemToFrame(new Point(current.getX()+0.5, current.getY()+0.5), location,
 						Globals.PIXELS_PER_GRID());
-				Point p2 = SchemUtilities.schemToFrame(new Point(next.getX(), next.getY()), location,
+				Point p2 = SchemUtilities.schemToFrame(new Point(next.getX()+0.5, next.getY()+0.5), location,
 						Globals.PIXELS_PER_GRID());
 				g.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY());
 			}
@@ -883,7 +885,7 @@ public class Application extends JPanel {
 		}
 
 		if (layers != null) {
-			PathFinding.displayPath(g, layers, location, Globals.PIXELS_PER_GRID(), Enemy.check);
+			PathFinding.displayPath(g, layers, location, (double)Globals.PIXELS_PER_GRID(), Enemy.check);
 		}
 
 		if (SHOW_ASSETS_MENU) {
@@ -1043,7 +1045,7 @@ public class Application extends JPanel {
 		g.fillOval((int)enemyP.getX()-z, (int)enemyP.getY()-z, z*2, z*2);
 
 		g.setColor(Color.YELLOW);
-		Point pnew = SchemUtilities.schemToFrame(enemy.getPos(), location, Globals.PIXELS_PER_GRID());
+		Point pnew = SchemUtilities.schemToFrame(new Point(enemy.getPos().getX()+0.5, enemy.getPos().getY()+0.5), location, Globals.PIXELS_PER_GRID());
 		g.fillOval((int) (pnew.getX()-enemy.getSize()/2), (int) (pnew.getY()-enemy.getSize()/2), (int) enemy.getSize(), (int) enemy.getSize());
 
 	}
@@ -1299,12 +1301,14 @@ public class Application extends JPanel {
 			}
 
 			if (entry.peripherals.KeyToggled(KeyEvent.VK_O)) {
-				Point pos = playerSchemPos();
-				enemy.updatePath(pos, location, Globals.PIXELS_PER_GRID());
+				IntPoint end = playerSchemRoundedPos();
+				IntPoint start = enemy.getIntPos();
+				enemy.updatePath(start, end, location, Globals.PIXELS_PER_GRID());
+				//enemy.updatePath(layers, start, end);
 			}
 
 			if (entry.peripherals.KeyToggled(KeyEvent.VK_P)) {
-				Point pos = enemy.getPos();
+				IntPoint pos = enemy.getIntPos();
 				layers = PathFinding.PathFindDebug(new PathNode(pos.getX(), pos.getY(), null), 10,
 				Enemy.check);
 			}
@@ -1478,8 +1482,8 @@ public class Application extends JPanel {
 				&& p.getY() > screen.top() && p.getY() < screen.bottom();
 	}
 
-	Point playerSchemPos() {
-		return SchemUtilities.frameToSchem(new Point((PLAYER_SCREEN_LOC.left()),(PLAYER_SCREEN_LOC.top())), location, Globals.PIXELS_PER_GRID());
+	IntPoint playerSchemRoundedPos() {
+		return SchemUtilities.frameToSchemInt(new Point((PLAYER_SCREEN_LOC.left()),(PLAYER_SCREEN_LOC.top())), location, Globals.PIXELS_PER_GRID());
 	}
 
 	void paintColorRect(Graphics g, ColorRect rect, double depth) {
