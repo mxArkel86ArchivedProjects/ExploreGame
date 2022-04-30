@@ -6,11 +6,6 @@ import java.util.Arrays;
 import java.util.List;
 
 public class DrawUtil {
-	public static void DrawRect(Graphics2D g, Rect r, Color c) {
-		g.setColor(c);
-		g.fillRect((int) r.getX(), (int) r.getY(), (int) r.getWidth(), (int) r.getHeight());
-	}
-
 	public static void DrawInvertedPolygon(List<Polygon> polygons, Graphics2D g, int width, int height) {
 		List<Integer> x = new ArrayList<Integer>();
 		List<Integer> y = new ArrayList<Integer>();

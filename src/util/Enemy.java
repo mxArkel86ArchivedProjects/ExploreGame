@@ -38,11 +38,10 @@ public class Enemy extends Rect {
             t = 0;
             return;
         } else if (t + 1 > dist / speed) {
-            this.x = p2.x;
-            this.y = p2.y;
+            this.setP1(p2);
         } else {
-            this.x += dx;
-            this.y += dy;
+            this.setX(this.left() + dx);
+            this.setY(this.top() + dy);
         }
         t++;
     }
@@ -50,7 +49,7 @@ public class Enemy extends Rect {
     public void updatePath(Point p2, Point location, double GRIDSIZE) {
         index = 0;
         t = 0;
-		Point p1 = new Point(getX(), getY());
+		Point p1 = new Point(left(), top());
 		Rect r = new Rect(p1, p2);
 
 		Path path = PathFinding.PathFind(new PathNode((int)Math.round(p1.getX()), (int)Math.round(p1.getY()), null), new PathNode((int)p2.getX(), (int)p2.getY(), null),
@@ -60,10 +59,10 @@ public class Enemy extends Rect {
                         Point pstart = p.getValue0();
                         Point pend = p.getValue1();
                         
-                        boolean inMap = (pend.getX() >= r.getX() - Globals.PATH_BUFFER
-                                && pend.getX() <= r.getX() + r.getWidth() + Globals.PATH_BUFFER
-                                && pend.getY() >= r.getY() - Globals.PATH_BUFFER
-                                && pend.getY() <= r.getY() + r.getHeight() + Globals.PATH_BUFFER);
+                        boolean inMap = (pend.getX() >= r.left() - Globals.PATH_BUFFER
+                                && pend.getX() <= r.right() + Globals.PATH_BUFFER
+                                && pend.getY() >= r.top() - Globals.PATH_BUFFER
+                                && pend.getY() <= r.bottom() + Globals.PATH_BUFFER);
 
                         if (!inMap)
                             return false;
@@ -75,15 +74,15 @@ public class Enemy extends Rect {
                         double dx = pend.getX() - pstart.getX();
                         double dy = pend.getY() - pstart.getY();
 
-                        for (Collider c : entry.app.colliders) {
-                            Rect r1 = new Rect(pstart.getX() - 0.2, pstart.getY() - 0.2, 0.4, 0.4);
+                        // for (Collider c : entry.app.colliders) {
+                        //     Rect r1 = new Rect(pstart.getX() - 0.2, pstart.getY() - 0.2, 0.4, 0.4);
                             
-                            CollisionReturn ret = CollisionUtil.SchemDynamicCollision(r1,
-                                    c, dx, dy);
-                            if (ret.colliding()) {
-                                return false;
-                            }
-                        }
+                        //     CollisionReturn ret = CollisionUtil.SchemDynamicCollision(r1,
+                        //             c, dx, dy);
+                        //     if (ret.colliding()) {
+                        //         return false;
+                        //     }
+                        // }
                         
 						return true;
 					}

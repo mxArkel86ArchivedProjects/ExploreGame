@@ -25,15 +25,15 @@ public class LevelConfigUtil {
             w.write("-=-=-=-= output =-=-=-=-=-\n\n");
             w.write("[collision]\n");
             for(Collider c : entry.app.newColliders){
-                w.write(String.format("%d,%d,%d,%d\n",(int)c.x, (int)c.y, (int)(c.x+c.width),(int)(c.y+c.height)));
+                w.write(String.format("%d,%d,%d,%d\n",(int)c.getX1(), (int)c.getY1(), (int)(c.getX2()),(int)(c.getY2())));
             }
             w.write("\n[walls]\n");
             for (LevelWall p : entry.app.newWalls) {
-                    w.write(String.format("%s,%d,%d,%.3f\n", p.getAsset(), (int) p.x, (int) p.y, p.getZ()));
+                    w.write(String.format("%s,%d,%d,%.3f\n", p.getAsset(), (int) p.left(), (int) p.top(), p.getZ()));
             }
             w.write("\n[tiles]\n");
             for(LevelTile p : entry.app.newTiles){
-                    w.write(String.format("%s,%d,%d,%.3f\n",p.getAsset(), (int)p.x, (int)p.y, p.getZ()));
+                    w.write(String.format("%s,%d,%d,%.3f\n",p.getAsset(), (int)p.left(), (int)p.top(), p.getZ()));
                 
             }
             
@@ -83,11 +83,12 @@ public class LevelConfigUtil {
                    double x2 = Double.parseDouble(args[2]);
                    double y2 = Double.parseDouble(args[3]);
 
-                   double x = Math.min(x1, x2);
-                   double y = Math.min(y1, y2);
-                   double w = Math.abs(x1-x2);
-                   double h = Math.abs(y1-y2);
-                   Collider c = new Collider(x, y, w, h);
+                   double x_1 = Math.min(x1, x2);
+                   double y_1 = Math.min(y1, y2);
+                   double x_2 = Math.max(x1, x2);
+                   double y_2 = Math.max(y1, y2);
+                    
+                   Collider c = new Collider(x_1, y_1, x_2, y_2);
                    entry.app.colliders.add(c);
                 // }else if(category.contentEquals("colorrect")){
                 //     String color = args[0];

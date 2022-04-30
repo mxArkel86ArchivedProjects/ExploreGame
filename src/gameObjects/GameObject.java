@@ -4,7 +4,7 @@ import util.Rect;
 
 public abstract class GameObject extends Rect {
 	public GameObject(double x, double y, double width, double height, double depth) {
-		super(x, y, width, height);
+		super(x, y, x+width, y+height);
 		
 		this.depth = depth;
 	}

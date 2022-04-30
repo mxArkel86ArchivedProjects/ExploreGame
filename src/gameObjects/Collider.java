@@ -1,13 +1,13 @@
 package gameObjects;
 
-import util.Rect;
+import util.Line;
 
-public class Collider extends Rect {
-	public Collider(double x, double y, double width, double height) {
-		super(x, y, width, height);
+public class Collider extends Line {
+	public Collider(double x, double y, double x2, double y2) {
+		super(x, y, x2, y2);
 	}
-	public Collider(Rect r){
-		super(r.x, r.y, r.width, r.height);
+	public Collider(Line l){
+		super(l.getP1(), l.getP2());
 	}
 
 }
