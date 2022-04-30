@@ -963,6 +963,9 @@ public class Application extends JPanel {
 						(int) (bound.top() + (i + 1) * text_height + (i) * VERT_MID_SPACING + VERT_SPACING));
 			}
 		}
+
+		int c = 4;
+		g.fillRect((int)PLAYER_SCREEN_LOC.left()-c, (int)PLAYER_SCREEN_LOC.top()-c, 2*c, 2*c);
 	}
 	/*
 	 * PAINT METHOD

@@ -54,8 +54,8 @@ public class PathFinding {
         g.setStroke(new BasicStroke(3));
         for (int i = 0; i < layers.size(); i++) {
             List<PathNode> layer = layers.get(i);
-            int z = (int) (255 / layers.size() * i);
-            Color c = new Color(z, z, z);
+            
+            Color c = Color.getHSBColor(i*0.4f/layers.size(), 1, 1);
             g.setColor(c);
             for (PathNode node : layer) {
                 if(node.parent==null)

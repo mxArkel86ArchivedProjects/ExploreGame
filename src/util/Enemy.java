@@ -64,7 +64,7 @@ public class Enemy {
         t = 0;
 		Point p1 = new Point(pos.x, pos.y);
 
-		Path path = PathFinding.PathFind(new PathNode((int)Math.round(p1.getX()), (int)Math.round(p1.getY()), null), new PathNode((int)p2.getX(), (int)p2.getY(), null),
+		Path path = PathFinding.PathFind(new PathNode((int)(p1.getX()), (int)(p1.getY()), null), new PathNode((int)p2.getX(), (int)p2.getY(), null),
 				check);
         if (path != null) {
             this.p = path;
@@ -102,7 +102,10 @@ public class Enemy {
             // double dx = pend.getX() - pstart.getX();
             // double dy = pend.getY() - pstart.getY();
 
-            Line cross = new Line(pstart, pend);
+            Point p1 = new Point(Math.round(pstart.getX()), Math.round(pstart.getY()));
+            Point p2 = new Point(Math.round(pend.getX()), Math.round(pend.getY()));
+
+            Line cross = new Line(p1, p2);
 
             for (Collider c : entry.app.colliders) {
                 
