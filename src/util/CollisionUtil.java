@@ -1,6 +1,42 @@
 package util;
 
 public class CollisionUtil {
+
+	public static boolean LineLineIntersection(Line l1, Line l2) {
+		return ccw(l1.getP1(), l1.getP2(), l2.getP1()) != ccw(l1.getP1(), l1.getP2(), l2.getP2())
+				&& ccw(l2.getP1(), l2.getP2(), l1.getP1()) != ccw(l2.getP1(), l2.getP2(), l1.getP2());
+
+	}
+	
+	private static boolean ccw(Point p1, Point p2, Point p3) {
+		return (p2.getX() - p1.getX()) * (p3.getY() - p1.getY())
+				- (p2.getY() - p1.getY()) * (p3.getX() - p1.getX()) > 0;
+	}
+	
+	public static boolean RectRectIntersection(Rect a, Rect b) {
+		boolean inline_y_axis = a.left() < b.right() && a.right() > b.left();
+		boolean inline_x_axis = a.top() < b.bottom() && a.bottom() > b.top();
+
+		boolean clip_on_left = a.left() < b.right() && a.right() > b.right();
+		boolean clip_on_right = a.left() < b.left() && a.right() > b.left();
+
+		boolean clip_on_top = a.top() < b.bottom() && a.bottom() > b.bottom();
+		boolean clip_on_bottom = a.top() < b.top() && a.bottom() > b.top();
+
+		boolean collide_x = inline_x_axis && (clip_on_left || clip_on_right || inline_y_axis);
+		boolean collide_y = inline_y_axis && (clip_on_top || clip_on_bottom || inline_x_axis);
+		return collide_x || collide_y;
+	}
+	/*
+	def ccw(A,B,C):
+    return (C.y-A.y) * (B.x-A.x) > (B.y-A.y) * (C.x-A.x)
+
+# Return true if line segments AB and CD intersect
+def intersect(A,B,C,D):
+    return ccw(A,C,D) != ccw(B,C,D) and ccw(A,B,C) != ccw(A,B,D)
+
+	*/
+
 	// public static CollisionReturn SchemDynamicCollision(Rect a, Rect b, double dx, double dy) {
 	// 	return CollisionRaw(a, b, dx, dy);
 	// }

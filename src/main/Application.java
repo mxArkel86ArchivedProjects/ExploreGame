@@ -109,7 +109,7 @@ public class Application extends JPanel {
 	Vector velocity = new Vector(0, 0);
 	Vector intent = new Vector(1, 0);
 
-	Enemy enemy = new Enemy(24,24,25,25);
+	Enemy enemy = new Enemy(24,24,40);
 
 	/*
 	 * SELECTOR VARIABLES
@@ -148,10 +148,13 @@ public class Application extends JPanel {
 
 	int select_val = 0;
 
+	List<List<PathNode>> layers = null;
+
 	/*
 	 * INIT METHOD
 	 */
 	public void Init(int width, int height) {
+		System.out.println("Initializing Application");
 
 		GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
 		gconfig = ge.getDefaultScreenDevice().getDefaultConfiguration();
@@ -278,12 +281,10 @@ public class Application extends JPanel {
 
 		enemy.step();
 
-		if (entry.tick>reassign_tick+5000) {
-			Point pos = playerSchemPos();
-			System.out.println("reassign POS=" + pos);
-			enemy.updatePath(pos, location, Globals.PIXELS_PER_GRID());
-			reassign_tick = entry.tick;
-		}
+		// if (entry.tick>reassign_tick+5000) {
+			
+		// 	reassign_tick = entry.tick;
+		// }
 		
 
 		/*
@@ -330,7 +331,7 @@ public class Application extends JPanel {
 		for (LevelTile o : tiles) {
 
 			Rect r = SchemUtilities.schemToFrame(o, location, Globals.PIXELS_PER_GRID());
-			//if (inScreenSpace(r))
+			if (inScreenSpace(r))
 				paintLevelTile(g, (LevelTile) o);
 
 		}
@@ -338,26 +339,26 @@ public class Application extends JPanel {
 		for (LevelWall o : walls) {
 
 			Rect r = SchemUtilities.schemToFrame(o, location, Globals.PIXELS_PER_GRID());
-			//if (inScreenSpace(r))
+			if (inScreenSpace(r))
 				paintLevelWall(g, (LevelWall) o);
 
 		}
 
-		g.setColor(Color.BLACK);
+		g.setColor(Color.BLUE);
 		g.setStroke(new BasicStroke(4));
 
 		if (OVERLAY_MODE) {
 			for (LevelTile o : newTiles) {
 
 				Rect r = SchemUtilities.schemToFrame(o, location, Globals.PIXELS_PER_GRID());
-				//if (inScreenSpace(r))
+				if (inScreenSpace(r))
 					paintLevelTile(g, (LevelTile) o);
 	
 			}
 			for (LevelWall o : newWalls) {
 				Rect r = SchemUtilities.schemToFrame(o, location,
 						Globals.PIXELS_PER_GRID());
-				//if (inScreenSpace(r))
+				if (inScreenSpace(r))
 					paintLevelWall(g, (LevelWall) o);
 			}
 			
@@ -383,7 +384,7 @@ public class Application extends JPanel {
 		g.setColor(Color.GREEN);
 		for (Bullet b : bullets) {
 			Rect r = SchemUtilities.schemToFrame(b, location, Globals.PIXELS_PER_GRID());
-			//if (inScreenSpace(r))
+			if (inScreenSpace(r))
 				g.drawRect((int) r.left(), (int) r.top(), (int) r.getWidth(), (int) r.getHeight());
 		}
 	}
@@ -463,7 +464,7 @@ public class Application extends JPanel {
 
 			for (LevelWall w : walls) {
 				Rect rect = SchemUtilities.schemToFrame(w, location, Globals.PIXELS_PER_GRID());
-				//if (inScreenSpace(rect)) {
+				if (inScreenSpace(rect)) {
 					Point PLAYER_CENTER = PLAYER_SCREEN_LOC.center();
 					Point WALL_CENTER = rect.center();
 					double overall_angle = (Math.atan2(PLAYER_CENTER.getY() - WALL_CENTER.getY(),
@@ -688,7 +689,7 @@ public class Application extends JPanel {
 						areas[i].add(new Area(o));
 					}
 
-				//}
+				}
 			}
 
 			visibility.subtract(new Area(areas[0]));
@@ -696,7 +697,7 @@ public class Application extends JPanel {
 		dispG.setPaint(null);
 
 		for (LevelWall wall : walls) {
-			//if (inScreenSpace(wall) && wall.getAsset().equals("wood")) {
+			if (inScreenSpace(wall) && wall.getAsset().equals("wood")) {
 				Rect r = SchemUtilities.schemToFrame(wall, location, Globals.PIXELS_PER_GRID());
 				Point obj = r.center();
 
@@ -716,7 +717,7 @@ public class Application extends JPanel {
 					dispG.fill(new Ellipse2D.Double(obj.getX() - Globals.LAMP_RADIUS, obj.getY() - Globals.LAMP_RADIUS,
 							Globals.LAMP_RADIUS * 2, Globals.LAMP_RADIUS * 2));
 				}
-			//}
+			}
 		}
 
 		Shape vis = areas[1];
@@ -725,7 +726,7 @@ public class Application extends JPanel {
 			for (LevelWall wall : walls) {
 				Rect wallrect = SchemUtilities.schemToFrame(wall, location,
 						Globals.PIXELS_PER_GRID());
-				//if (inScreenSpace(wallrect)) {
+				if (inScreenSpace(wallrect)) {
 					Rectangle2D re = new Rectangle2D.Double((int) Math.round(wallrect.left()),
 							(int) Math.round(wallrect.top()),
 							wallrect.getWidth(),
@@ -735,7 +736,7 @@ public class Application extends JPanel {
 
 						visibility.add(new Area((Shape) re));
 					}
-				//}
+				}
 			}
 		}
 
@@ -772,19 +773,19 @@ public class Application extends JPanel {
 		}
 
 		g.setColor(Color.RED);
-		g.setStroke(new BasicStroke(6));
+		g.setStroke(new BasicStroke(4));
 		if (EDIT_MODE) {
 			Point newpoint1 = SchemUtilities.roundSchemFrame(entry.peripherals.mousePos(), location,
 					Globals.PIXELS_PER_GRID());
 
-			if (selection_type == 0 && select_point_store != null) {
-				Point newpoint2 = SchemUtilities.schemToFrame(select_point_store, location,
-						Globals.PIXELS_PER_GRID());
-					
-				Rect rdraw = Rect.fromPoints(newpoint1.getX(), newpoint1.getY(), newpoint2.getX(), newpoint2.getY());
-				
-				g.drawRect((int)rdraw.left(), (int)rdraw.top(), (int)rdraw.getWidth(),
-						(int)rdraw.getHeight());
+			if (selection_type == 0) {
+				if (select_point_store != null) {
+					Point newpoint2 = SchemUtilities.schemToFrame(select_point_store, location,
+							Globals.PIXELS_PER_GRID());
+
+					g.drawLine((int) newpoint1.getX(), (int) newpoint1.getY(), (int) newpoint2.getX(),
+							(int) newpoint2.getY());
+				}
 			} else {
 				AppAsset a = assets.get(selectasset);
 				if (a != null) {
@@ -869,16 +870,20 @@ public class Application extends JPanel {
 
 					Rect r1 = new Rect((int) p.getX(), (int) p.getY(), (int) (Globals.PIXELS_PER_GRID()),
 							(int) (Globals.PIXELS_PER_GRID()));
-					//if (inScreenSpace(r1)) {
+					if (inScreenSpace(r1)) {
 						g.drawLine((int) Math.floor(p.getX()), (int) Math.floor(p.getY()), (int) Math.floor(p.getX()),
 								(int) Math.floor(p.getY() + Globals.PIXELS_PER_GRID()));
 
 						g.drawLine((int) Math.floor(p.getX()), (int) Math.floor(p.getY()),
 								(int) Math.floor(p.getX() + Globals.PIXELS_PER_GRID()),
 								(int) Math.floor(p.getY()));
-					//}
+					}
 				}
 			}
+		}
+
+		if (layers != null) {
+			PathFinding.displayPath(g, layers, location, Globals.PIXELS_PER_GRID(), Enemy.check);
 		}
 
 		if (SHOW_ASSETS_MENU) {
@@ -979,14 +984,10 @@ public class Application extends JPanel {
 		g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_OFF);
 
 		LEVEL_SCREEN_SPACE = new Rect(
-				Math.max(0, (LEVEL_BOUND.left()) * Globals.PIXELS_PER_GRID() - location.getX()),
-				Math.max(0, (LEVEL_BOUND.top()) * Globals.PIXELS_PER_GRID() - location.getY()),
-				MathUtil.min_(LEVEL_BOUND.left() * Globals.PIXELS_PER_GRID() - location.getX(),
-						getWidth() - LEVEL_BOUND.left() * Globals.PIXELS_PER_GRID() + location.getX(),
-						(LEVEL_BOUND.getWidth()) * Globals.PIXELS_PER_GRID(), getWidth()),
-				MathUtil.min_(LEVEL_BOUND.top() * Globals.PIXELS_PER_GRID() - location.getY(),
-						getHeight() - LEVEL_BOUND.top() * Globals.PIXELS_PER_GRID() + location.getY(),
-						(LEVEL_BOUND.getHeight()) * Globals.PIXELS_PER_GRID(), getHeight()));
+				Math.max(0, LEVEL_BOUND.left() * Globals.PIXELS_PER_GRID() - location.getX()),
+				Math.max(0, LEVEL_BOUND.top() * Globals.PIXELS_PER_GRID() - location.getY()),
+				Math.min(this.getWidth(), LEVEL_BOUND.right() * Globals.PIXELS_PER_GRID()-location.getX()),
+				Math.min(this.getHeight(), LEVEL_BOUND.bottom() * Globals.PIXELS_PER_GRID()-location.getY()));
 
 		Graphics2D dispG = (Graphics2D) display.getGraphics();
 		Graphics2D extraG = (Graphics2D) extra.getGraphics();
@@ -1035,12 +1036,12 @@ public class Application extends JPanel {
 
 		int z = 5;
 		g.setColor(Color.RED);
-		Point enemyP = SchemUtilities.schemToFrame(new Point(enemy.left(), enemy.top()), location, Globals.PIXELS_PER_GRID());
+		Point enemyP = SchemUtilities.schemToFrame(new Point(enemy.getPos().getX(), enemy.getPos().getY()), location, Globals.PIXELS_PER_GRID());
 		g.fillOval((int)enemyP.getX()-z, (int)enemyP.getY()-z, z*2, z*2);
 
 		g.setColor(Color.YELLOW);
-		Rect rnew = SchemUtilities.schemToFrame(enemy, location, Globals.PIXELS_PER_GRID());
-		g.fillOval((int) (rnew.left()-rnew.getWidth()/2), (int) (rnew.top()-rnew.getHeight()/2), (int) rnew.getWidth(), (int) rnew.getHeight());
+		Point pnew = SchemUtilities.schemToFrame(enemy.getPos(), location, Globals.PIXELS_PER_GRID());
+		g.fillOval((int) (pnew.getX()-enemy.getSize()/2), (int) (pnew.getY()-enemy.getSize()/2), (int) enemy.getSize(), (int) enemy.getSize());
 
 	}
 
@@ -1120,11 +1121,9 @@ public class Application extends JPanel {
 					select_point_store = SchemUtilities.frameToSchem(pos, location,
 							Globals.PIXELS_PER_GRID());
 				else {
-					// Rect r = Rect.fromPoints(select_point_1.getX(), select_point_1.getY(), select_point_store.getX(),
-					// 		select_point_store.getY());
-					// Collider c = new Collider(r);
-					// newColliders.add(c);
-					// select_point_store = null;
+					Collider c = new Collider(select_point_store, select_point_1);
+					newColliders.add(c);
+					select_point_store = null;
 				}
 
 			} else if (selection_type == 1) {
@@ -1295,6 +1294,19 @@ public class Application extends JPanel {
 			if (entry.peripherals.KeyToggled(KeyEvent.VK_U)) {
 				((Gun) weapon).mag = ItemAttributes.DevTek_Mag();
 			}
+
+			if (entry.peripherals.KeyToggled(KeyEvent.VK_O)) {
+				Point pos = playerSchemPos();
+				enemy.updatePath(pos, location, Globals.PIXELS_PER_GRID());
+			}
+
+			if (entry.peripherals.KeyToggled(KeyEvent.VK_P)) {
+				Point pos = enemy.getPos();
+				layers = PathFinding.PathFindDebug(new PathNode(pos.getX(), pos.getY(), null), 10,
+				Enemy.check);
+			}
+
+			
 		}
 	}
 
@@ -1449,9 +1461,9 @@ public class Application extends JPanel {
 	/*
 	 * CHECK IF RECTANGLE IS INSIDE SCREEN SPACE
 	 */
-	// boolean inScreenSpace(Rect r) {
-	// 	return 
-	// }
+	boolean inScreenSpace(Rect r) {
+		return CollisionUtil.RectRectIntersection(LEVEL_SCREEN_SPACE, r);
+	}
 
 	boolean inScreenSpace(Line l) {
 		return inScreenSpace(l.getP1()) && inScreenSpace(l.getP2());

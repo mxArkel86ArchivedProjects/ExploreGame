@@ -9,6 +9,10 @@ public class Rect {
 		this.p2 = new Point(x1, y1);
 	}
 
+	public static Rect fromXYWH(double x, double y, double width, double height) {
+		return new Rect(x, y, x + width, y + height);
+	}
+
 	public Rect(Point p1, Point p2) {
 		this.p1 = p1;
 		this.p2 = p2;

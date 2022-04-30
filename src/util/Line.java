@@ -37,4 +37,24 @@ public class Line {
     public double getY2() {
         return p2.getY();
     }
+
+    public double dY() {
+        return p2.getY() - p1.getY();
+    }
+
+    public double dX() {
+        return p2.getX() - p1.getX();
+    }
+
+    public double slope() {
+        return dY() / dX();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof Line l) {
+            return l.p1.equals(p1) && l.p2.equals(p2);
+        }
+        return false;
+    }
 }
