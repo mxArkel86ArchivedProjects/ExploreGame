@@ -19,7 +19,7 @@ import gameObjects.Collider;
 import main.entry;
 
 public class PathFinding {
-    public static Path PathFindByWalls(PathNode start, PathNode end, int MAX_TRAVEL_DIST, List<Collider> allWallsRaw) {
+    public static List<Point> PathFindByWalls(PathNode start, PathNode end, int MAX_TRAVEL_DIST, List<Collider> allWallsRaw) {
 
         List<Collider> allWalls = allWallsRaw.stream().map(c -> CollisionUtil.subdivideCollider(c)).flatMap(List::stream)
                 .map(x->new Collider(x.shift(-0.5, -0.5))).collect(Collectors.toList());
@@ -36,15 +36,13 @@ public class PathFinding {
                 if (queue.size() > 20000)
                     return null;
 
-                // if (current.getPoint().equals(end.getPoint())) {
-                //     return new Path(getPath(current, start));
-                // }
+
                 Line walk = new Line(current.getPoint().DPoint(), end.getPoint().DPoint());
                 boolean intersects = CollisionUtil.LineIntersectsWithColliders(walk, allWalls);
                 if(!intersects) {
-                    Path p = new Path(getPath(current, start));
-                    p.path.add(end.getPoint());
-                    return p;
+                    List<Point> path = getPath(current, start).stream().map(p -> p.DPoint()).collect(Collectors.toList());
+                    path.add(end.getPoint().DPoint());
+                    return path;
                 }
 
                 visited.add(current);
@@ -199,14 +197,6 @@ public class PathFinding {
         return cornerLines;
     }
     
-    private static double MaxWithSign(double a, double b) {
-        boolean a_val = Math.abs(a) > Math.abs(b);
-        if(a_val)
-            return a;
-        else
-            return b;
-    }
-    
     public static Point[] getAdjacentPoints(Line c) {
         Point[] points = new Point[2];
         
@@ -228,41 +218,41 @@ public class PathFinding {
     
     
     
-    public static Path PathFindByGrid(PathNode start, PathNode end, Function<Pair<IntPoint, IntPoint>, Boolean> inMap) {
-        Queue<PathNode> queue = new LinkedList<>();
-        queue.add(start);
-        List<IntPoint> visited = new ArrayList<>();
+    // public static Path PathFindByGrid(PathNode start, PathNode end, Function<Pair<IntPoint, IntPoint>, Boolean> inMap) {
+    //     Queue<PathNode> queue = new LinkedList<>();
+    //     queue.add(start);
+    //     List<IntPoint> visited = new ArrayList<>();
 
-        List<PathNode> add_node = new ArrayList<>();
-        System.out.println("start: " + start.getPoint().getX() + "," + start.getPoint().getY() + " end: "
-                + end.getPoint().getX() + "," + end.getPoint().getY());
-        while (queue.size() > 0) {
-            if (queue.size() > 10000)
-                return null;
-            System.out.println("queue size: " + queue.size());
-            while (!queue.isEmpty()) {
-                PathNode node = queue.poll();
+    //     List<PathNode> add_node = new ArrayList<>();
+    //     System.out.println("start: " + start.getPoint().getX() + "," + start.getPoint().getY() + " end: "
+    //             + end.getPoint().getX() + "," + end.getPoint().getY());
+    //     while (queue.size() > 0) {
+    //         if (queue.size() > 10000)
+    //             return null;
+    //         System.out.println("queue size: " + queue.size());
+    //         while (!queue.isEmpty()) {
+    //             PathNode node = queue.poll();
 
-                if (node.equals(end)) {
-                    Path p = new Path(getPath(node, start));
-                    return p;
-                }
+    //             if (node.equals(end)) {
+    //                 Path p = new Path(getPath(node, start));
+    //                 return p;
+    //             }
 
-                visited.add(node.getPoint());
-                for (PathNode neighbor : getNeighbors(node)) {
-                    if (!visited.contains(neighbor.getPoint()) && !queue.contains(neighbor)) {
-                        Pair<IntPoint, IntPoint> points = Pair.with(node.getPoint(), neighbor.getPoint());
-                        if (inMap == null || inMap.apply(points)) {
-                            add_node.add(neighbor);
-                        }
-                    }
-                }
-            }
-            queue.addAll(add_node);
-            add_node.clear();
-        }
-        return null;
-    }
+    //             visited.add(node.getPoint());
+    //             for (PathNode neighbor : getNeighbors(node)) {
+    //                 if (!visited.contains(neighbor.getPoint()) && !queue.contains(neighbor)) {
+    //                     Pair<IntPoint, IntPoint> points = Pair.with(node.getPoint(), neighbor.getPoint());
+    //                     if (inMap == null || inMap.apply(points)) {
+    //                         add_node.add(neighbor);
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //         queue.addAll(add_node);
+    //         add_node.clear();
+    //     }
+    //     return null;
+    // }
 
     private static int pathGetDepth(List<PathNode> layer) {
         List<PathNode> nodes = new ArrayList<>();
@@ -318,42 +308,42 @@ public class PathFinding {
     }
     
 
-    public static List<PathNode> PathFindDebug(PathNode start, int max_iterations, Function<Pair<IntPoint, IntPoint>, Boolean> inMap) {
-        Queue<PathNode> queue = new LinkedList<>();
-        queue.add(start);
-        List<IntPoint> visited = new ArrayList<>();
+    // public static List<PathNode> PathFindDebug(PathNode start, int max_iterations, Function<Pair<IntPoint, IntPoint>, Boolean> inMap) {
+    //     Queue<PathNode> queue = new LinkedList<>();
+    //     queue.add(start);
+    //     List<IntPoint> visited = new ArrayList<>();
 
-        List<PathNode> add_node = new ArrayList<>();
+    //     List<PathNode> add_node = new ArrayList<>();
 
-        List<PathNode> finalNodes = new ArrayList<>();
+    //     List<PathNode> finalNodes = new ArrayList<>();
         
     
-        int iterations = 0;
-        while (queue.size() > 0 || iterations > max_iterations) {
-            if (queue.size() > 1000)
-                break;
+    //     int iterations = 0;
+    //     while (queue.size() > 0 || iterations > max_iterations) {
+    //         if (queue.size() > 1000)
+    //             break;
             
-            List<PathNode> layer = new ArrayList<>();
-            while (!queue.isEmpty()) {
-                PathNode node = queue.poll();
-                layer.add(node);
+    //         List<PathNode> layer = new ArrayList<>();
+    //         while (!queue.isEmpty()) {
+    //             PathNode node = queue.poll();
+    //             layer.add(node);
 
-                visited.add(node.getPoint());
-                for (PathNode neighbor : getNeighbors(node)) {
-                    if (!visited.contains(neighbor.getPoint()) && !queue.contains(neighbor)) {
-                        Pair<IntPoint, IntPoint> points = Pair.with(node.getPoint(), neighbor.getPoint());
-                        if (inMap == null || inMap.apply(points)) {
-                            add_node.add(neighbor);
-                        }
-                    }
-                }
-            }
-            queue.addAll(add_node);
-            add_node.clear();
-            finalNodes = queue.stream().collect(Collectors.toList());
-        }
-        return finalNodes;
-    }
+    //             visited.add(node.getPoint());
+    //             for (PathNode neighbor : getNeighbors(node)) {
+    //                 if (!visited.contains(neighbor.getPoint()) && !queue.contains(neighbor)) {
+    //                     Pair<IntPoint, IntPoint> points = Pair.with(node.getPoint(), neighbor.getPoint());
+    //                     if (inMap == null || inMap.apply(points)) {
+    //                         add_node.add(neighbor);
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //         queue.addAll(add_node);
+    //         add_node.clear();
+    //         finalNodes = queue.stream().collect(Collectors.toList());
+    //     }
+    //     return finalNodes;
+    // }
 
     private static List<IntPoint> getPath(PathNode node, PathNode start) {
         List<IntPoint> path = new ArrayList<>();
@@ -367,19 +357,19 @@ public class PathFinding {
         return path;
     }
 
-    private static List<PathNode> getNeighbors(PathNode node) {
-        List<PathNode> neighbors = Arrays.asList(
-                new PathNode(node.getPoint().x + 1, node.getPoint().y, node), // right
-                new PathNode(node.getPoint().x - 1, node.getPoint().y, node), // left
-                new PathNode(node.getPoint().x, node.getPoint().y - 1, node), // down
-                new PathNode(node.getPoint().x, node.getPoint().y + 1, node),// ,//,//up
-        new PathNode(node.getPoint().x+1, node.getPoint().y+1, node),//right-up
-        new PathNode(node.getPoint().x-1, node.getPoint().y-1, node),//left-down
-        new PathNode(node.getPoint().x+1, node.getPoint().y-1, node),//right-down
-        new PathNode(node.getPoint().x-1, node.getPoint().y+1, node)//left-up
-        );
-        return neighbors;
-    }
+    // private static List<PathNode> getNeighbors(PathNode node) {
+    //     List<PathNode> neighbors = Arrays.asList(
+    //             new PathNode(node.getPoint().x + 1, node.getPoint().y, node), // right
+    //             new PathNode(node.getPoint().x - 1, node.getPoint().y, node), // left
+    //             new PathNode(node.getPoint().x, node.getPoint().y - 1, node), // down
+    //             new PathNode(node.getPoint().x, node.getPoint().y + 1, node),// ,//,//up
+    //     new PathNode(node.getPoint().x+1, node.getPoint().y+1, node),//right-up
+    //     new PathNode(node.getPoint().x-1, node.getPoint().y-1, node),//left-down
+    //     new PathNode(node.getPoint().x+1, node.getPoint().y-1, node),//right-down
+    //     new PathNode(node.getPoint().x-1, node.getPoint().y+1, node)//left-up
+    //     );
+    //     return neighbors;
+    // }
 
     public static List<Point> getCorners(List<Collider> colliders) {
         List<Line> lines = getCornerLines(colliders);

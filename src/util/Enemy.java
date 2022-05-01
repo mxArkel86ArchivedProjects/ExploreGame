@@ -11,7 +11,7 @@ import main.Globals;
 import main.entry;
 
 public class Enemy {
-    Path p;
+    List<Point> path;
     Point pos;
     double size;
     
@@ -23,32 +23,44 @@ public class Enemy {
     int index;
     int t;
     final double speed = 0.03;
+    double totalDist = 0;
 
     public void step() {
-        if (p == null || p.path == null)
+        if (path == null)
             return;
-        if (index >= p.path.size() - 1)
+        if (index >= path.size() - 1)
             return;
 
-        IntPoint p1 = p.getPathPoints().get(index);
-        IntPoint p2 = p.getPathPoints().get(index + 1);
-        double dist = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+       // while(pos.distance(p.get(p.size()-1)) > 0.04) {
+            Point p1 = path.get(index);
+            Point p2 = path.get(index + 1);
+            double angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+            //double dist = p1.distance(p2);
 
-        double dx = p2.x == p1.x ? 0 : (p2.x - p1.x) / dist * speed;
-        double dy = p2.y == p1.y ? 0 : (p2.y - p1.y) / dist * speed;
-
-        if (t > dist / speed) {
-            index++;
-            t = 0;
-            return;
-        } else if (t + 1 > dist / speed) {
-            pos.x = p2.x;
-            pos.y = p2.y;
-        } else {
+            double dx = Math.cos(angle) * speed;
+            double dy = Math.sin(angle) * speed;
+            
             pos.x += dx;
             pos.y += dy;
-        }
-        t++;
+
+            if(pos.distance(p2) < 0.04) {
+                index++;
+            }
+       // }
+        
+
+        // if (t > dist / speed) {
+        //     index++;
+        //     t = 0;
+        //     return;
+        // } else if (t + 1 > dist / speed) {
+        //     pos.x = p2.x;
+        //     pos.y = p2.y;
+        // } else {
+        //     pos.x += dx;
+        //     pos.y += dy;
+        // }
+        // t++;
     }
     
     public Point getPos() {
@@ -67,21 +79,23 @@ public class Enemy {
         index = 0;
         t = 0;
 
-        // Path path = PathFinding.PathFindByGrid(new PathNode((int) (start.getX()), (int) (start.getY()), null),
-        //         new PathNode((int) end.getX(), (int) end.getY(), null),
-        //         check);
-        Path path = PathFinding.PathFindByWalls(new PathNode(start, null), new PathNode(end, null), 6, entry.app.colliders);
-        if (path != null) {
-            this.p = path;
-            // p.path.add(0, p1);
-            //path.optimizePath();
+        List<Point> p1 = PathFinding.PathFindByWalls(new PathNode(start, null), new PathNode(end, null), 6,
+                entry.app.colliders);
+        
+        if (p1 != null) {
+            Line l = new Line(pos, p1.get(1));
+            if (!CollisionUtil.LineIntersectsWithColliders(l, entry.app.colliders)) {
+                p1.set(0, pos);
+            }
+            this.path = p1;
+
         } else {
-            this.p = null;
+            this.path = null;
         }
     }
 
-    public Path getPath() {
-        return p;
+    public List<Point> getPath() {
+        return path;
     }
 
     public static final Function<Pair<IntPoint, IntPoint>, Boolean> check = new Function<Pair<IntPoint, IntPoint>, Boolean>() {

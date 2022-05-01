@@ -61,7 +61,6 @@ import util.IntPoint;
 import util.LevelConfigUtil;
 import util.Line;
 import util.MathUtil;
-import util.Path;
 import util.PathFinding;
 import util.PathNode;
 import util.Point;
@@ -1039,19 +1038,18 @@ public class Application extends JPanel {
 				(int) enemy.getSize(), (int) enemy.getSize());
 
 		if (enemy.getPath() != null) {
-			Path p = enemy.getPath();
+			List<Point> points = enemy.getPath();
 			final int psize = 3;
 			
-			List<IntPoint> points = p.getPathPoints();
-			for (IntPoint point : points) {
+			for (Point point : points) {
 				Point p2 = SchemUtilities.schemToFrame(new Point(point.getX() + pz, point.getY() + pz), location,
 						Globals.PIXELS_PER_GRID());
 				g.drawOval((int) p2.getX() - psize, (int) p2.getY() - psize, psize * 2, psize * 2);
 			}
 			g.setStroke(new BasicStroke(4));
 			for (int i = 0; i < points.size() - 1; i++) {
-				IntPoint current = points.get(i);
-				IntPoint next = points.get(i + 1);
+				Point current = points.get(i);
+				Point next = points.get(i + 1);
 
 				Point p1 = SchemUtilities.schemToFrame(new Point(current.getX() + pz, current.getY() + pz), location,
 						Globals.PIXELS_PER_GRID());
@@ -1340,7 +1338,7 @@ public class Application extends JPanel {
 
 			if (entry.peripherals.KeyToggled(KeyEvent.VK_O)) {
 				IntPoint end = playerSchemRoundedPos();
-				IntPoint start = enemy.getIntPos();
+				IntPoint start = new IntPoint((int)Math.round(enemy.getPos().getX()), (int)Math.round(enemy.getPos().getY()));
 				enemy.updatePath(start, end, location, Globals.PIXELS_PER_GRID());
 				//enemy.updatePath(layers, start, end);
 			}
@@ -1349,7 +1347,7 @@ public class Application extends JPanel {
 				IntPoint pos = enemy.getIntPos();
 				// layers = PathFinding.PathFindDebug(new PathNode(pos.getX(), pos.getY(), null), 10,
 				// Enemy.check);
-				layers = PathFinding.PathFindByWallsDebug(new PathNode(pos, null), 2, colliders);
+				layers = PathFinding.PathFindByWallsDebug(new PathNode(pos, null), 4, colliders);
 			}
 
 			
