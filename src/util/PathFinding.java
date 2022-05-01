@@ -2,7 +2,6 @@ package util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -16,7 +15,6 @@ import java.awt.Color;
 import org.javatuples.Pair;
 
 import gameObjects.Collider;
-import main.entry;
 
 public class PathFinding {
     public static List<Point> PathFindByWalls(PathNode start, PathNode end, int MAX_TRAVEL_DIST, List<Collider> allWallsRaw) {
@@ -144,27 +142,27 @@ public class PathFinding {
                     IntPoint d1 = null;
                     IntPoint d2 = null;
                     IntPoint d3 = null;
-                    IntPoint d4 = null;
+                    // IntPoint d4 = null;
                     if (p1.equals(p3)) {
                         d1 = p2;
                         d2 = p4;
                         d3 = p1;
-                        d4 = p3;
+                        //d4 = p3;
                     } else if (p1.equals(p4)) {
                         d1 = p2;
                         d2 = p3;
                         d3 = p1;
-                        d4 = p4;
+                        //d4 = p4;
                     } else if (p2.equals(p3)) {
                         d1 = p1;
                         d2 = p4;
                         d3 = p2;
-                        d4 = p3;
+                        //d4 = p3;
                     } else if (p2.equals(p4)) {
                         d1 = p1;
                         d2 = p3;
                         d3 = p2;
-                        d4 = p4;
+                        //d4 = p4;
                     } else {
                         continue;
                     }

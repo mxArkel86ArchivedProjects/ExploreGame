@@ -85,15 +85,4 @@ public class Rect {
 	public double right() {
 		return topleft.x + size.width;
 	}
-
-	// public Rect extend(double i) {
-	//     return new Rect(this.x-i, this.y-i, this.width+2*i, this.height+2*i);
-	// }
-
-
-	public static Rect fromPoints(double x1, double y1, double x2, double y2) {
-		double x_ = Math.min(x1, x2);
-		double y_ = Math.min(y1, y2);
-		return new Rect(x_, y_, Math.abs(x1 - x2), Math.abs(y1 - y2));
-	}
 }

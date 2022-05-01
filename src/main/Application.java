@@ -27,21 +27,17 @@ import java.awt.image.VolatileImage;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
-import java.util.Map.Entry;
 import java.util.concurrent.Callable;
-import java.util.function.Function;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 import javax.swing.JPanel;
 
-import org.javatuples.*;
+import org.javatuples.Pair;
+import org.javatuples.Triplet;
 
 import gameObjects.Bullet;
 import gameObjects.Collider;
@@ -60,13 +56,11 @@ import util.ImageImport;
 import util.IntPoint;
 import util.LevelConfigUtil;
 import util.Line;
-import util.MathUtil;
 import util.PathFinding;
 import util.PathNode;
 import util.Point;
 import util.Rect;
 import util.SchemUtilities;
-import util.ScreenAnimation;
 import util.Size;
 import util.Vector;
 
@@ -360,7 +354,7 @@ public class Application extends JPanel {
 				Rect r = SchemUtilities.schemToFrame(o, location, Globals.PIXELS_PER_GRID());
 				if (inScreenSpace(r))
 					paintLevelTile(g, (LevelTile) o);
-	
+
 			}
 			for (LevelWall o : newWalls) {
 				Rect r = SchemUtilities.schemToFrame(o, location,
@@ -368,7 +362,7 @@ public class Application extends JPanel {
 				if (inScreenSpace(r))
 					paintLevelWall(g, (LevelWall) o);
 			}
-			
+
 			for (Collider o : colliders) {
 				Line r = SchemUtilities.schemToFrame(o, location, Globals.PIXELS_PER_GRID());
 				if (inScreenSpace(r))
@@ -394,6 +388,16 @@ public class Application extends JPanel {
 			if (inScreenSpace(r))
 				g.drawRect((int) r.left(), (int) r.top(), (int) r.getWidth(), (int) r.getHeight());
 		}
+	}
+	
+	private double clipAngle(double r) {
+		while (r > 2 * Math.PI) {
+			r -= Math.PI * 2;
+		}
+		while (r < 0) {
+			r += Math.PI * 2;
+		}
+		return r;	
 	}
 
 	private Shape LightMask(Graphics2D dispG, Graphics g) {
@@ -474,16 +478,16 @@ public class Application extends JPanel {
 				if (inScreenSpace(rect)) {
 					Point PLAYER_CENTER = PLAYER_SCREEN_LOC.center();
 					Point WALL_CENTER = rect.center();
-					double overall_angle = (Math.atan2(PLAYER_CENTER.getY() - WALL_CENTER.getY(),
-							WALL_CENTER.getX() - PLAYER_CENTER.getX()) + Math.PI * 2) % (Math.PI * 2);
-					double angle_tl = (Math.atan2(PLAYER_CENTER.getY() - rect.left(),
-							rect.left() - PLAYER_CENTER.getX()) + Math.PI * 2) % (Math.PI * 2);
-					double angle_br = (Math.atan2(PLAYER_CENTER.getY() - rect.bottomLeft().getY(),
-							rect.topRight().getX() - PLAYER_CENTER.getX()) + Math.PI * 2) % (Math.PI * 2);
-					double angle_tr = (Math.atan2(PLAYER_CENTER.getY() - rect.top(),
-							rect.topRight().getX() - PLAYER_CENTER.getX()) + Math.PI * 2) % (Math.PI * 2);
-					double angle_bl = (Math.atan2(PLAYER_CENTER.getY() - rect.bottomRight().getY(),
-							rect.left() - PLAYER_CENTER.getX()) + Math.PI * 2) % (Math.PI * 2);
+					double overall_angle = clipAngle(Math.atan2(PLAYER_CENTER.getY() - WALL_CENTER.getY(),
+							WALL_CENTER.getX() - PLAYER_CENTER.getX()));
+					double angle_tl = clipAngle(Math.atan2(PLAYER_CENTER.getY() - rect.top(),
+							rect.left() - PLAYER_CENTER.getX()));
+					double angle_tr = clipAngle(Math.atan2(PLAYER_CENTER.getY() - rect.top(),
+							rect.right() - PLAYER_CENTER.getX()));
+					double angle_bl = clipAngle(Math.atan2(PLAYER_CENTER.getY() - rect.bottom(),
+							rect.left() - PLAYER_CENTER.getX()));
+					double angle_br = clipAngle(Math.atan2(PLAYER_CENTER.getY() - rect.bottom(),
+							rect.right() - PLAYER_CENTER.getX()));
 
 					for (int i = 0; i < areas.length; i++) {
 						Polygon o = new Polygon();
@@ -523,33 +527,45 @@ public class Application extends JPanel {
 									(int) (rect.bottom() - corner_buff));
 
 							outer_first = PointOnScreenEdge(angle_bl,
-									new Point(rect.left() + end_buff, rect.bottom() - end_buff));
+									new Point(rect.left() + end_buff, rect.bottom() + end_buff));
 
 						}
 
-						if (angle_tl >= 0 && angle_tl < Math.PI / 2) {
+						// g.setColor(Color.RED);
+						// g.drawLine((int)rect.left(), (int)rect.top(), (int)(rect.left()+100*Math.cos(angle_tl)), (int)(rect.top()-100*Math.sin(angle_tl)));
+
+						// g.setColor(Color.RED);
+						// g.drawLine((int)rect.left(), (int)rect.bottom(), (int)(rect.left()+100*Math.cos(angle_bl)), (int)(rect.bottom()-100*Math.sin(angle_bl)));
+
+						// g.setColor(Color.RED);
+						// g.drawLine((int)rect.right(), (int)rect.top(), (int)(rect.right()+100*Math.cos(angle_tr)), (int)(rect.top()-100*Math.sin(angle_tr)));
+
+						// g.setColor(Color.RED);
+						// g.drawLine((int)rect.right(), (int)rect.bottom(), (int)(rect.right()+100*Math.cos(angle_br)), (int)(rect.bottom()-100*Math.sin(angle_br)));
+
+
+						if (angle_tl >= 0 && angle_tl < Math.PI / 2) {//0-1.57  4.8
 							outer_last = PointOnScreenEdge(angle_tl,
 									new Point(rect.left() + end_buff, rect.top() + end_buff));
 
 							inner_last = new Point((int) Math.ceil(rect.left() + corner_buff),
 									(int) Math.ceil(rect.top() + corner_buff));
 
-						} else if (angle_bl >= Math.PI / 2 && angle_bl < Math.PI) {
+						} else if (angle_bl >= Math.PI / 2 && angle_bl < Math.PI) {//1.57-3.14
 							outer_last = PointOnScreenEdge(angle_bl,
 									new Point(rect.left() + end_buff, rect.bottom() - end_buff));
 
 							inner_last = new Point((int) Math.ceil(rect.left() + corner_buff),
 									(int) (rect.bottom() - corner_buff));
 
-						} else if (angle_br >= Math.PI && angle_br < Math.PI * 3 / 2) {
+						} else if (angle_br >= Math.PI && angle_br < Math.PI * 3 / 2) {//3.14-4.71
 							outer_last = PointOnScreenEdge(angle_br,
-									new Point(rect.right() - end_buff,
-											rect.bottom() - end_buff));
+									new Point(rect.right() - end_buff, rect.bottom() - end_buff));
 
 							inner_last = new Point((int) (rect.right() - corner_buff),
 									(int) (rect.bottom() - corner_buff));
 
-						} else if (angle_tr >= Math.PI * 3 / 2 && angle_tr < Math.PI * 2) {
+						} else if (angle_tr >= Math.PI * 3 / 2 && angle_tr < Math.PI * 2) {//4.71-6.28
 							outer_last = PointOnScreenEdge(angle_tr,
 									new Point(rect.right() - end_buff, rect.top() + end_buff));
 
@@ -920,7 +936,7 @@ public class Application extends JPanel {
 			final int TOTAL_WIDTH = debug_opts.stream()
 					.map(s -> g.getFontMetrics(DEBUG_SELECT_TEXT).stringWidth(s.getValue0()))
 					.max(Comparator.naturalOrder()).get() + 2 * SIDE_SPACING;
-			Rect bound = Rect.fromPoints(this.getWidth() - 20 - TOTAL_WIDTH, 20, this.getWidth() - 20,
+			Rect bound = new Rect(this.getWidth() - 20 - TOTAL_WIDTH, 20, this.getWidth() - 20,
 					20 + TOTAL_HEIGHT);
 
 			g.setColor(Color.DARK_GRAY);
@@ -1206,7 +1222,6 @@ public class Application extends JPanel {
 
 	void FireBullet() {
 		Gun g = (Gun) weapon;
-		Point pos = entry.peripherals.mousePos();
 
 		if (g.MAG_TYPE() != g.mag.NAME()) {
 			System.out.println("WRONG MAG INSERTED");

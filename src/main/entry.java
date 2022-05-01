@@ -5,16 +5,9 @@ import java.awt.Dimension;
 import java.awt.Point;
 import java.awt.Toolkit;
 import java.awt.image.BufferedImage;
-import java.util.List;
 import java.util.Timer;
-import java.util.function.Function;
-
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
-
-import util.PathNode;
-import util.PathFinding;
-
 //import net.java.games.input.Controller;
 
 public class entry {
