@@ -33,7 +33,7 @@ public class PathFinding {
             while (!queue.isEmpty()) {
                 PathNode current = queue.poll();
 
-                if (queue.size() > 10000)
+                if (queue.size() > 20000)
                     return null;
 
                 if (current.getPoint().equals(end.getPoint())) {
@@ -121,9 +121,9 @@ public class PathFinding {
         return nextNodes;
     }
     
-    public static List<Point> getCorners(List<Collider> colliders) {
+    public static List<Line> getCornerLines(List<Collider> colliders) {
         //check if two lines make a corner
-        List<Point> corners = new ArrayList<>();
+        List<Line> cornerLines = new ArrayList<>();
         
         for (int i = 0; i < colliders.size(); i++) {
             for (int j = i + 1; j < colliders.size(); j++) {
@@ -132,6 +132,9 @@ public class PathFinding {
 
                     IntPoint p3 = new IntPoint(colliders.get(j).getP1());
                     IntPoint p4 = new IntPoint(colliders.get(j).getP2());
+
+                    Line l1 = colliders.get(i);
+                    Line l2 = colliders.get(j);
 
                     IntPoint d1 = null;
                     IntPoint d2 = null;
@@ -160,29 +163,33 @@ public class PathFinding {
                     } else {
                         continue;
                     }
-                    Line l = new Line(d1.DPoint(), d2.DPoint());
-                    Line l2 = new Line(d3.DPoint(), d4.DPoint());
+                    Line across = new Line(d1.DPoint(), d2.DPoint());
+
+                    Line l3 = new Line(across.center(), d3.DPoint());
 
                     // check if the lines are parallel
-                    double slope = l.dX()==0?0:l.dY()/l.dX();
-                    double slope2 = l2.dX()==0?0:l2.dY()/l2.dX();
+                    int slope = (int)(l1.dX()==0?Integer.MAX_VALUE:l1.dY()/l1.dX());
+                    int slope2 = (int)(l2.dX() == 0 ? Integer.MAX_VALUE : l2.dY() / l2.dX());
+                    
                     if(slope - slope2 < 0.00001 && slope - slope2 > -0.00001)
                         continue;
                     
                 
                     
-                    if((slope + 1 / slope2< 1.00001 && slope + 1 / slope2 > 0.99999))
-                        continue;
+                    // if((slope + 1 / slope2< 1.00001 && slope + 1 / slope2 > 0.99999))
+                    //     continue;
                     
                     
                     
                     // double shift_1 = (-MaxWithSign(d1.getX() - d3.getX(), d1.getY() - d3.getY())) / 2;
                     // double shift_2 = (-MaxWithSign(d2.getX() - d4.getX(), d2.getY() - d4.getY())) / 2;
-                    corners.addAll(Arrays.stream(getAdjacentPoints(l)).toList());
+                    
+                    cornerLines.add(across.shift(l3.dX(), l3.dY()).shift(0.5, 0.5));
+                    //cornerLines.add(across);
 
             }
         }
-        return corners;
+        return cornerLines;
     }
     
     private static double MaxWithSign(double a, double b) {
@@ -202,9 +209,12 @@ public class PathFinding {
             double iangle = angle + Math.PI / 2;
             int side = sides[z];
             //get point perpendicular to the collider and a distance of length/2
-            Point p1 = new Point(c.center().x + side * Math.cos(iangle) * c.length() / 2,
-                    c.center().y + side * Math.sin(iangle) * c.length() / 2);
-            points[z] = p1;
+            double x = c.center().x + Math.cos(iangle) * c.length() / 2 * side;
+            double y = c.center().y + Math.sin(iangle) * c.length() / 2 * side;
+            points[z] = new Point(x, y);
+            // Point p1 = new Point(c.center().x + side * Math.cos(iangle) * c.length() / 2,
+            //         c.center().y + side * Math.sin(iangle) * c.length() / 2);
+            // points[z] = p1;
         }
         return points;
     }
@@ -362,5 +372,15 @@ public class PathFinding {
         new PathNode(node.getPoint().x-1, node.getPoint().y+1, node)//left-up
         );
         return neighbors;
+    }
+
+    public static List<Point> getCorners(List<Collider> colliders) {
+        List<Line> lines = getCornerLines(colliders);
+
+        List<Point> corners = new ArrayList<>();
+        for (Line l : lines) {
+            corners.addAll(Arrays.stream(getAdjacentPoints(l)).toList());
+        }
+        return corners;
     }
 }

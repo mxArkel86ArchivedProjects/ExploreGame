@@ -1070,17 +1070,22 @@ public class Application extends JPanel {
 			}
 		}
 
+		List<Collider> closeColliders = subdivided_colliders.stream().filter(c -> c.center().distance(playerSchemRoundedPos().DPoint()) < 2)
+				.collect(Collectors.toList());
+
 		g.setColor(Color.BLUE);
-		for (Point p3 : PathFinding.getCorners(subdivided_colliders)) {
-			Point p4 = SchemUtilities.schemToFrame(p3.shift(-0.5, -0.5), location, Globals.PIXELS_PER_GRID());
+		for (Point p3 : PathFinding.getCorners(closeColliders)) {
+			Point p4 = SchemUtilities.schemToFrame(p3.shift(-pz, -pz), location, Globals.PIXELS_PER_GRID());
 			g.fillOval((int) p4.getX() - z2, (int) p4.getY() - z2, z2 * 2, z2 * 2);
 		}
-//lines
-		// for (Line l2 : PathFinding.getCorners(colliders_1)) {
-		// 	Point p1 = SchemUtilities.schemToFrame(l2.getP1(), location, Globals.PIXELS_PER_GRID());
-		// 	Point p2 = SchemUtilities.schemToFrame(l2.getP2(), location, Globals.PIXELS_PER_GRID());
-		// 	g.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY());
-		// }
+		//lines
+
+		g.setColor(Color.RED);
+		for (Line l2 : PathFinding.getCornerLines(closeColliders)) {
+			Point p1 = SchemUtilities.schemToFrame(l2.getP1().shift(-pz, -pz), location, Globals.PIXELS_PER_GRID());
+			Point p2 = SchemUtilities.schemToFrame(l2.getP2().shift(-pz, -pz), location, Globals.PIXELS_PER_GRID());
+			g.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY());
+		}
 	}
 
 	/*
