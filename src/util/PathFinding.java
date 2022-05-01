@@ -36,8 +36,15 @@ public class PathFinding {
                 if (queue.size() > 20000)
                     return null;
 
-                if (current.getPoint().equals(end.getPoint())) {
-                    return new Path(getPath(current, start));
+                // if (current.getPoint().equals(end.getPoint())) {
+                //     return new Path(getPath(current, start));
+                // }
+                Line walk = new Line(current.getPoint().DPoint(), end.getPoint().DPoint());
+                boolean intersects = CollisionUtil.LineIntersectsWithColliders(walk, allWalls);
+                if(!intersects) {
+                    Path p = new Path(getPath(current, start));
+                    p.path.add(end.getPoint());
+                    return p;
                 }
 
                 visited.add(current);
