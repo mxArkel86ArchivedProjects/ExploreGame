@@ -67,9 +67,10 @@ public class Enemy {
         index = 0;
         t = 0;
 
-        Path path = PathFinding.PathFind(new PathNode((int) (start.getX()), (int) (start.getY()), null),
-                new PathNode((int) end.getX(), (int) end.getY(), null),
-                check);
+        // Path path = PathFinding.PathFindByGrid(new PathNode((int) (start.getX()), (int) (start.getY()), null),
+        //         new PathNode((int) end.getX(), (int) end.getY(), null),
+        //         check);
+        Path path = PathFinding.PathFindByWalls(new PathNode(start, null), new PathNode(end, null), 6, entry.app.colliders);
         if (path != null) {
             this.p = path;
             // p.path.add(0, p1);

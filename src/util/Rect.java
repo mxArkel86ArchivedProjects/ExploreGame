@@ -1,12 +1,12 @@
 package util;
 
 public class Rect {
-	Point p1;
-	Point p2;
+	Point topleft;
+	Size size;
 
 	public Rect(double x, double y, double x1, double y1) {
-		this.p1 = new Point(x, y);
-		this.p2 = new Point(x1, y1);
+		this.topleft = new Point(x, y);
+		this.size = new Size(x1 - x, y1 - y);
 	}
 
 	public static Rect fromXYWH(double x, double y, double width, double height) {
@@ -14,80 +14,76 @@ public class Rect {
 	}
 
 	public Rect(Point p1, Point p2) {
-		this.p1 = p1;
-		this.p2 = p2;
+		this.topleft = new Point(Math.min(p1.x, p2.x), Math.min(p1.y, p2.y));
+		this.size = new Size(Math.abs(p1.x - p2.x), Math.abs(p1.y - p2.y));
 	}
 
 	public void setP1(Point p) {
-		this.p1 = p;
+		this.topleft = p;
 	}
 
 	public void setP2(Point p) {
-		this.p2 = p;
+		this.size = new Size(p.x - topleft.x, p.y - topleft.y);
 	}
 
 	public double getWidth() {
-		return Math.abs(p1.getX() - p2.getX());
+		return size.width;
 	}
 
 	public double getHeight() {
-		return Math.abs(p1.getY() - p2.getY());
+		return size.height;
 	}
 
 	public void setX(double x) {
-		double w = getWidth();
-		p1.setX(x);
-		p2.setX(x + w);
+		this.topleft.x = x;
 	}
 
 	public void setY(double y) {
-		double h = getHeight();
-		p1.setY(y);
-		p2.setY(y + h);
+		this.topleft.y = y;
 	}
 
 	public void setWidth(double width) {
-		p2.setX(p1.getX() + width);
+		this.size.width = width;
 	}
 
 	public void setHeight(double height) {
-		p2.setY(p1.getY() + height);
+		this.size.height = height;
 	}
 
 	public Point topLeft() {
-		return new Point(p1.getX(), p1.getY());
+		return topleft;
 	}
 
 	public Point topRight() {
-		return new Point(p2.getX(), p1.getY());
+		return new Point(topleft.x + size.width, topleft.y);
 	}
 
 	public Point bottomLeft() {
-		return new Point(p1.getX(), p2.getY());
+		return new Point(topleft.x, topleft.y + size.height);
 	}
 
 	public Point bottomRight() {
-		return new Point(p2.getX(), p2.getY());
+		return new Point(topleft.x + size.width, topleft.y + size.height);
 	}
 
 	public Point center() {
-		return new Point(p1.getX() + getWidth() / 2, p1.getY() + getHeight() / 2);
+		return new Point(topleft.x + size.width / 2, topleft.y + size.height / 2);
 	}
 
 	public double bottom() {
-		return p2.getY();
+		return topleft.y + size.height;
 	}
 
 	public double top() {
-		return p1.getY();
+		return topleft.y;
 	}
 
 	public double left() {
-		return p1.getX();
+		return topleft.x;
 	}
 
 	public double right() {
-		return p2.getX();
+		return topleft.x + size.width;
 	}
 
 	// public Rect extend(double i) {

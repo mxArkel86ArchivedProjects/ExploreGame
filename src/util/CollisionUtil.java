@@ -1,7 +1,36 @@
 package util;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import gameObjects.Collider;
+
 public class CollisionUtil {
 
+	public static List<Collider> subdivideCollider(Collider c) {
+		Point p1 = c.getP1();
+		Point p2 = c.getP2();
+
+		double dist = Math.max(Math.abs(p1.x - p2.x), Math.abs(p1.y - p2.y));
+
+		List<Collider> new_colliders = new ArrayList<>();
+		for (int i = 0; i < dist; i++) {
+			int j = i + 1;
+			Point o1 = new Point(p1.x + (p2.x - p1.x) * i / dist, p1.y + (p2.y - p1.y) * i / dist);
+			Point o2 = new Point(p1.x + (p2.x - p1.x) * j / dist, p1.y + (p2.y - p1.y) * j / dist);
+			new_colliders.add(new Collider(o1, o2));
+		}
+		return new_colliders;
+	}
+
+	public static boolean LineIntersectsWithColliders(Line line, List<Collider> colliders) {
+		for (Collider collider : colliders) {
+			if (LineLineIntersection(line, collider)) {
+				return true;
+			}
+		}
+		return false;
+	}
 	//check if two line segments intersect
 	public static boolean LineLineIntersection(Line l1, Line l2) {
 		double x1 = l1.getP1().getX();

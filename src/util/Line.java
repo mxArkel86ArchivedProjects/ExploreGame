@@ -14,6 +14,13 @@ public class Line {
         this.p2 = new Point(x2, y2);
     }
 
+    public Line shift(double x, double y) {
+        Point p1_ = new Point(p1.x + x, p1.y + y);
+        Point p2_ = new Point(p2.x + x, p2.y + y);
+        Line l = new Line(p1_, p2_);
+        return l;
+    }
+
     public Point getP1() {
         return p1;
     }
@@ -46,8 +53,38 @@ public class Line {
         return p2.getX() - p1.getX();
     }
 
-    public double slope() {
+    public double getSlope() {
+        if (dX() == 0)
+            return Double.POSITIVE_INFINITY;
         return dY() / dX();
+    }
+
+    public double getIntercept() {
+        return p1.getY() - getSlope() * p1.getX();
+    }
+
+    public Point center() {
+        return new Point((p1.getX() + p2.getX()) / 2, (p1.getY() + p2.getY()) / 2);
+    }
+
+    public double length() {
+        return Math.sqrt(Math.pow(dX(), 2) + Math.pow(dY(), 2));
+    }
+
+    public double angle() {
+        return Math.atan2(dY(), dX());
+    }
+
+    public boolean parallel(Line l) {
+        if(l.getSlope() - getSlope() < 0.00001 && l.getSlope() - getSlope() > -0.00001)
+            return true;
+        return false;
+    }
+
+    public boolean perpendicular(Line l) {
+        if(l.getSlope() + 1 / getSlope()< 1.00001 && l.getSlope() + 1 / getSlope() > 0.99999)
+            return false;
+        return true;
     }
 
     @Override

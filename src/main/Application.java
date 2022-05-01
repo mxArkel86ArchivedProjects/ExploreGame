@@ -36,6 +36,7 @@ import java.util.Set;
 import java.util.Map.Entry;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 import javax.swing.JPanel;
@@ -151,6 +152,8 @@ public class Application extends JPanel {
 
 	List<PathNode> layers = null;
 
+	List<Collider> subdivided_colliders = null;
+
 	/*
 	 * INIT METHOD
 	 */
@@ -263,6 +266,10 @@ public class Application extends JPanel {
 		}, () -> {
 			return "";
 		}));
+
+
+		subdivided_colliders = colliders.stream().map(c -> CollisionUtil.subdivideCollider(c)).flatMap(List::stream)
+				.collect(Collectors.toList());
 	}
 
 	/*
@@ -752,27 +759,7 @@ public class Application extends JPanel {
 						(int) Math.floor(r.getHeight()));
 		}
 
-		if (enemy.getPath() != null) {
-			Path p = enemy.getPath();
-			final int psize = 3;
-			List<IntPoint> points = p.getPathPoints();
-			for (IntPoint point : points) {
-				Point p2 = SchemUtilities.schemToFrame(new Point(point.getX()+0.5, point.getY()+0.5), location,
-						Globals.PIXELS_PER_GRID());
-				g.drawOval((int) p2.getX() - psize, (int) p2.getY() - psize, psize * 2, psize * 2);
-			}
-			g.setStroke(new BasicStroke(4));
-			for (int i = 0; i < points.size() - 1; i++) {
-				IntPoint current = points.get(i);
-				IntPoint next = points.get(i + 1);
-				
-				Point p1 = SchemUtilities.schemToFrame(new Point(current.getX()+0.5, current.getY()+0.5), location,
-						Globals.PIXELS_PER_GRID());
-				Point p2 = SchemUtilities.schemToFrame(new Point(next.getX()+0.5, next.getY()+0.5), location,
-						Globals.PIXELS_PER_GRID());
-				g.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY());
-			}
-		}
+		
 
 		g.setColor(Color.RED);
 		g.setStroke(new BasicStroke(4));
@@ -991,8 +978,8 @@ public class Application extends JPanel {
 		LEVEL_SCREEN_SPACE = new Rect(
 				Math.max(0, LEVEL_BOUND.left() * Globals.PIXELS_PER_GRID() - location.getX()),
 				Math.max(0, LEVEL_BOUND.top() * Globals.PIXELS_PER_GRID() - location.getY()),
-				Math.min(this.getWidth(), LEVEL_BOUND.right() * Globals.PIXELS_PER_GRID()-location.getX()),
-				Math.min(this.getHeight(), LEVEL_BOUND.bottom() * Globals.PIXELS_PER_GRID()-location.getY()));
+				Math.min(this.getWidth(), LEVEL_BOUND.right() * Globals.PIXELS_PER_GRID() - location.getX()),
+				Math.min(this.getHeight(), LEVEL_BOUND.bottom() * Globals.PIXELS_PER_GRID() - location.getY()));
 
 		Graphics2D dispG = (Graphics2D) display.getGraphics();
 		Graphics2D extraG = (Graphics2D) extra.getGraphics();
@@ -1038,16 +1025,62 @@ public class Application extends JPanel {
 		g.setStroke(new BasicStroke(4));
 		g.drawRect(0, 0, this.getWidth(), this.getHeight());
 
-
+		final double pz = 0.5;//0.5
 		int z = 5;
 		g.setColor(Color.RED);
-		Point enemyP = SchemUtilities.schemToFrame(new Point(enemy.getPos().getX(), enemy.getPos().getY()), location, Globals.PIXELS_PER_GRID());
-		g.fillOval((int)enemyP.getX()-z, (int)enemyP.getY()-z, z*2, z*2);
+		Point enemyP = SchemUtilities.schemToFrame(new Point(enemy.getPos().getX(), enemy.getPos().getY()), location,
+				Globals.PIXELS_PER_GRID());
+		g.fillOval((int) enemyP.getX() - z, (int) enemyP.getY() - z, z * 2, z * 2);
 
 		g.setColor(Color.YELLOW);
-		Point pnew = SchemUtilities.schemToFrame(new Point(enemy.getPos().getX()+0.5, enemy.getPos().getY()+0.5), location, Globals.PIXELS_PER_GRID());
-		g.fillOval((int) (pnew.getX()-enemy.getSize()/2), (int) (pnew.getY()-enemy.getSize()/2), (int) enemy.getSize(), (int) enemy.getSize());
+		Point pnew = SchemUtilities.schemToFrame(new Point(enemy.getPos().getX() + pz, enemy.getPos().getY() + pz),
+				location, Globals.PIXELS_PER_GRID());
+		g.fillOval((int) (pnew.getX() - enemy.getSize() / 2), (int) (pnew.getY() - enemy.getSize() / 2),
+				(int) enemy.getSize(), (int) enemy.getSize());
 
+		if (enemy.getPath() != null) {
+			Path p = enemy.getPath();
+			final int psize = 3;
+			
+			List<IntPoint> points = p.getPathPoints();
+			for (IntPoint point : points) {
+				Point p2 = SchemUtilities.schemToFrame(new Point(point.getX() + pz, point.getY() + pz), location,
+						Globals.PIXELS_PER_GRID());
+				g.drawOval((int) p2.getX() - psize, (int) p2.getY() - psize, psize * 2, psize * 2);
+			}
+			g.setStroke(new BasicStroke(4));
+			for (int i = 0; i < points.size() - 1; i++) {
+				IntPoint current = points.get(i);
+				IntPoint next = points.get(i + 1);
+
+				Point p1 = SchemUtilities.schemToFrame(new Point(current.getX() + pz, current.getY() + pz), location,
+						Globals.PIXELS_PER_GRID());
+				Point p2 = SchemUtilities.schemToFrame(new Point(next.getX() + pz, next.getY() + pz), location,
+						Globals.PIXELS_PER_GRID());
+				g.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY());
+			}
+		}
+
+		int z2 = 4;
+		g.setColor(Color.ORANGE);
+		for (Collider c : subdivided_colliders) {
+			for (Point pt : PathFinding.getAdjacentPoints(c)) {
+				Point pt2 = SchemUtilities.schemToFrame(pt, location, Globals.PIXELS_PER_GRID());
+				g.fillOval((int) pt2.getX() - z2, (int) pt2.getY() - z2, z2 * 2, z2 * 2);
+			}
+		}
+
+		g.setColor(Color.BLUE);
+		for (Point p3 : PathFinding.getCorners(subdivided_colliders)) {
+			Point p4 = SchemUtilities.schemToFrame(p3.shift(-0.5, -0.5), location, Globals.PIXELS_PER_GRID());
+			g.fillOval((int) p4.getX() - z2, (int) p4.getY() - z2, z2 * 2, z2 * 2);
+		}
+//lines
+		// for (Line l2 : PathFinding.getCorners(colliders_1)) {
+		// 	Point p1 = SchemUtilities.schemToFrame(l2.getP1(), location, Globals.PIXELS_PER_GRID());
+		// 	Point p2 = SchemUtilities.schemToFrame(l2.getP2(), location, Globals.PIXELS_PER_GRID());
+		// 	g.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY());
+		// }
 	}
 
 	/*
@@ -1309,8 +1342,9 @@ public class Application extends JPanel {
 
 			if (entry.peripherals.KeyToggled(KeyEvent.VK_P)) {
 				IntPoint pos = enemy.getIntPos();
-				layers = PathFinding.PathFindDebug(new PathNode(pos.getX(), pos.getY(), null), 10,
-				Enemy.check);
+				// layers = PathFinding.PathFindDebug(new PathNode(pos.getX(), pos.getY(), null), 10,
+				// Enemy.check);
+				layers = PathFinding.PathFindByWallsDebug(new PathNode(pos, null), 2, colliders);
 			}
 
 			

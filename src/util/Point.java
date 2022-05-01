@@ -27,6 +27,11 @@ public class Point {
 		this.y = y;
 	}
 
+	public Point shift(double x, double y) {
+		Point p = new Point(this.x + x, this.y + y);
+		return p;
+	}
+
 	public void modify(Function<Point, Point> a) {
 		Point p = a.apply(this);
 		this.x = p.getX();
@@ -45,5 +50,9 @@ public class Point {
 		}
 		return false;
 	}
+
+    public double distance(Point p2) {
+        return Math.sqrt(Math.pow(p2.getX() - this.getX(), 2) + Math.pow(p2.getY() - this.getY(), 2));
+    }
 
 }
