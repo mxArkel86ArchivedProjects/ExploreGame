@@ -4,11 +4,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 import gameObjects.Collider;
+import templates.CollisionProps;
 import templates.Line;
 import templates.Point;
 import templates.Rect;
 
 public class CollisionUtil {
+
+	public static boolean playerCollisionWithColliders(Rect player_pos_on_screen, double dx, double dy, Point location,
+			double GRIDSIZE, List<Collider> colliders) {
+		Point schemPt = SchemUtilities.frameToSchem(player_pos_on_screen.center(), location, GRIDSIZE);
+
+		//return collides;
+		return true;
+	}
 
 	public static List<Collider> subdivideCollider(Collider c) {
 		Point p1 = c.getP1();

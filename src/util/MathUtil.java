@@ -2,10 +2,37 @@ package util;
 
 import org.javatuples.Pair;
 
+import templates.CalcVector;
 import templates.Point;
 import templates.Size;
 
 public class MathUtil {
+	public static double dotProduct(CalcVector v1, CalcVector v2) {
+		return v1.getX() * v2.getX() + v1.getY() * v2.getY();
+	}
+
+	public static double crossProduct(CalcVector v1, CalcVector v2) {
+		return v1.getX() * v2.getY() - v1.getY() * v2.getX();
+	}
+	
+	public static CalcVector parallelProjection(CalcVector U, CalcVector V) {
+		double scalar = dotProduct(U, V) / (Math.pow(V.getMagnitude(), 2));
+		return V.getScaledVector(scalar);
+	}
+
+	public static CalcVector perpendicularProjection(CalcVector U, CalcVector V) {
+		return U.subtract(parallelProjection(U, V));
+	}
+
+	public static double getAngle(CalcVector v1, CalcVector v2) {
+		return Math.acos(dotProduct(v1, v2) / (v1.getMagnitude() * v2.getMagnitude()));
+	}
+
+	public static Point getIntersection(CalcVector v1, CalcVector v2) {
+		double x = (v2.getY() * v1.getX() - v1.getY() * v2.getX()) / (v1.getY() * v2.getX() - v2.getY() * v1.getX());
+		double y = (v1.getX() * v2.getY() - v2.getX() * v1.getY()) / (v1.getY() * v2.getX() - v2.getY() * v1.getX());
+		return new Point(x, y);
+	}
 
     public static double clipAngle(double r) {
     	while (r > 2 * Math.PI) {

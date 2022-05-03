@@ -981,6 +981,10 @@ public class Application extends JPanel {
 		component_x = velocity.getX();
 		component_y = velocity.getY();
 
+		double angle = Math.atan2(component_y, component_x);
+		// boolean colliding = CollisionUtil.playerCollisionWithColliders(PLAYER_SCREEN_LOC, angle, location,
+		// 		Globals.PIXELS_PER_GRID(), colliders);
+
 		// if (!CLIP_MODE) {
 		// 	{
 		// 		// CollisionReturn ret = objectCollision(PLAYER_SCREEN_LOC, component_x, component_y, true);
@@ -1001,6 +1005,7 @@ public class Application extends JPanel {
 
 		// 	}
 		// }
+
 		for (int i = 0; i < bullets.size(); i++) {
 			Bullet b = bullets.get(i);
 			b.moveBullet();
