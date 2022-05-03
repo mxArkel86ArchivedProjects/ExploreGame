@@ -1,10 +1,15 @@
 package util;
 
+import templates.IntPoint;
+import templates.Line;
+import templates.Point;
+import templates.Rect;
+
 public class SchemUtilities {
 
     public static Point schemToFrame(Point r, Point location, double GRIDSIZE) {
     	/// multiply by GRIDSIZE, subtract camera location
-    	return new Point(r.getX() * GRIDSIZE - location.x, r.getY() * GRIDSIZE - location.y);
+    	return new Point(r.getX() * GRIDSIZE - location.getX(), r.getY() * GRIDSIZE - location.getY());
     }
 
 	public static Line schemToFrame(Line l, Point location, double GRIDSIZE) {

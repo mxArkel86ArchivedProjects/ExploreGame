@@ -5,22 +5,15 @@ import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
-import java.awt.GradientPaint;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsEnvironment;
 import java.awt.ImageCapabilities;
-import java.awt.Polygon;
-import java.awt.RadialGradientPaint;
 import java.awt.RenderingHints;
 import java.awt.Shape;
 import java.awt.Transparency;
 import java.awt.event.KeyEvent;
-import java.awt.geom.Area;
-import java.awt.geom.Ellipse2D;
-import java.awt.geom.Point2D;
-import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
 import java.awt.image.VolatileImage;
@@ -36,38 +29,37 @@ import java.util.stream.Collectors;
 
 import javax.swing.JPanel;
 
-import org.javatuples.Pair;
 import org.javatuples.Triplet;
 
 import gameObjects.Bullet;
 import gameObjects.Collider;
 import gameObjects.ColorRect;
+import gameObjects.Enemy;
 import gameObjects.LevelTile;
 import gameObjects.LevelWall;
 import gameObjects.ResetBox;
 import inventory.Gun;
-import inventory.ItemAttributes;
+import inventory.Magazine;
 import inventory.Weapon;
-import util.AppAsset;
-import util.CollisionReturn;
+import templates.ImageAsset;
+import templates.IntPoint;
+import templates.Line;
+import templates.PathNode;
+import templates.Point;
+import templates.PolarLine;
+import templates.Rect;
+import templates.Size;
 import util.CollisionUtil;
-import util.Enemy;
-import util.ImageImport;
-import util.IntPoint;
+import util.ImageUtil;
 import util.LevelConfigUtil;
-import util.Line;
-import util.PathFinding;
-import util.PathNode;
-import util.Point;
-import util.Rect;
+import util.PathfindingUtil;
 import util.SchemUtilities;
-import util.Size;
-import util.Vector;
+import util.ShaderUtil;
 
 public class Application extends JPanel {
-	Rect PLAYER_SCREEN_LOC = null;
+	public Rect PLAYER_SCREEN_LOC = null;
 	Rect LEVEL_BOUND = new Rect(0, 0, 0, 0);
-	Point location = new Point(0, 0);
+	public Point location = new Point(0, 0);
 
 	/*
 	 * GAME OBJECTS
@@ -85,7 +77,7 @@ public class Application extends JPanel {
 	 * GAME ASSETS
 	 */
 	public HashMap<String, Point> checkpoints = new HashMap<String, Point>();
-	public HashMap<String, AppAsset> assets = new HashMap<>();
+	public HashMap<String, ImageAsset> assets = new HashMap<>();
 	public HashMap<String, Color> colors = new HashMap<String, Color>();
 
 	/*
@@ -98,11 +90,11 @@ public class Application extends JPanel {
 	/*
 	 * PLAYER PARAMETERS
 	 */
-	double looking_angle = 0;
-	Weapon weapon = ItemAttributes.DevTek_Rifle();
+	public double looking_angle = 0;
+	Weapon weapon = null;
 	long last_fire_tick = 0;
-	Vector velocity = new Vector(0, 0);
-	Vector intent = new Vector(1, 0);
+	PolarLine velocity = new PolarLine(0, 0);
+	PolarLine intent = new PolarLine(1, 0);
 
 	Enemy enemy = new Enemy(38,45,40);
 
@@ -132,7 +124,7 @@ public class Application extends JPanel {
 	boolean OVERLAY_MODE = false;
 	boolean SHADOWS_MODE = false;
 	boolean SHOW_ASSETS_MENU = false;
-	boolean WALL_VISIBILITY = true;
+	boolean FLASHLIGHT_ENABLED = false;
 
 	GraphicsConfiguration gconfig = null;
 
@@ -153,6 +145,8 @@ public class Application extends JPanel {
 	public void Init(int width, int height) {
 		System.out.println("Initializing Application");
 
+		weapon = new Gun(null, 0, 200);
+
 		GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
 		gconfig = ge.getDefaultScreenDevice().getDefaultConfiguration();
 
@@ -172,17 +166,17 @@ public class Application extends JPanel {
 					continue;
 				}
 				String name = fileEntry.getName().substring(0, fileEntry.getName().indexOf("."));
-				BufferedImage img = ImageImport.getImage(fileEntry.getPath());
+				BufferedImage img = ImageUtil.getImage(fileEntry.getPath());
 				Size size = new Size(img.getWidth() / Globals.PIXELS_PER_GRID_IMPORT(),
 						img.getHeight() / Globals.PIXELS_PER_GRID_IMPORT());
 				assetSizes.put(name,
 						size);
 				if (selectasset.length() == 0)
 					selectasset = name;
-				BufferedImage resize = ImageImport.resize(img,
+				BufferedImage resize = ImageUtil.resize(img,
 						(int) (img.getWidth() * Globals.PIXELS_RESIZE * 1.0f / Globals.PIXELS_PER_GRID_IMPORT()),
 						(int) (img.getHeight() * Globals.PIXELS_RESIZE * 1.0f / Globals.PIXELS_PER_GRID_IMPORT()));
-				assets.put(name, new AppAsset(resize, size));
+				assets.put(name, new ImageAsset(resize, size));
 			}
 		}
 
@@ -248,10 +242,10 @@ public class Application extends JPanel {
 		}, () -> {
 			return String.valueOf(CLIP_MODE);
 		}));
-		debug_opts.add(new Triplet<String, Runnable, Callable<String>>("Wall Visibility [%s]", () -> {
-			WALL_VISIBILITY = !WALL_VISIBILITY;
+		debug_opts.add(new Triplet<String, Runnable, Callable<String>>("Toggle Flashlight [%s]", () -> {
+			FLASHLIGHT_ENABLED = !FLASHLIGHT_ENABLED;
 		}, () -> {
-			return String.valueOf(WALL_VISIBILITY);
+			return String.valueOf(FLASHLIGHT_ENABLED);
 		}));
 		debug_opts.add(new Triplet<String, Runnable, Callable<String>>("Save Level", () -> {
 			LevelConfigUtil.saveLevel();
@@ -345,427 +339,24 @@ public class Application extends JPanel {
 
 		}
 
-		g.setColor(Color.BLUE);
-		g.setStroke(new BasicStroke(4));
-
-		if (OVERLAY_MODE) {
-			for (LevelTile o : newTiles) {
-
-				Rect r = SchemUtilities.schemToFrame(o, location, Globals.PIXELS_PER_GRID());
-				if (inScreenSpace(r))
-					paintLevelTile(g, (LevelTile) o);
-
-			}
-			for (LevelWall o : newWalls) {
-				Rect r = SchemUtilities.schemToFrame(o, location,
-						Globals.PIXELS_PER_GRID());
-				if (inScreenSpace(r))
-					paintLevelWall(g, (LevelWall) o);
-			}
-
-			for (Collider o : colliders) {
-				Line r = SchemUtilities.schemToFrame(o, location, Globals.PIXELS_PER_GRID());
-				if (inScreenSpace(r))
-					g.drawLine((int) r.getX1(), (int) r.getY1(), (int) r.getX2(), (int) r.getY2());
-			}
-
-			g.setColor(Color.ORANGE);
-			for (Collider o : newColliders) {
-				Line l = SchemUtilities.schemToFrame(o, location, Globals.PIXELS_PER_GRID());
-
-				if (inScreenSpace(l))
-					g.drawLine((int) l.getX1(), (int) l.getY1(), (int) l.getX2(), (int) l.getY2());
-			}
-		}
-
 		g.setColor(Color.YELLOW);
 		g.fillOval((int) PLAYER_SCREEN_LOC.left(), (int) PLAYER_SCREEN_LOC.top(), (int) PLAYER_SCREEN_LOC.getWidth(),
 				(int) PLAYER_SCREEN_LOC.getHeight());
 
+		g.setColor(Color.YELLOW);
+		Point pnew = SchemUtilities.schemToFrame(new Point(enemy.getPos().getX() + 0.5, enemy.getPos().getY() + 0.5),
+				location, Globals.PIXELS_PER_GRID());
+		g.fillOval((int) (pnew.getX() - enemy.getSize() / 2), (int) (pnew.getY() - enemy.getSize() / 2),
+				(int) enemy.getSize(), (int) enemy.getSize());
+
 		g.setColor(Color.GREEN);
 		for (Bullet b : bullets) {
-			Rect r = SchemUtilities.schemToFrame(b, location, Globals.PIXELS_PER_GRID());
+			Rect r = SchemUtilities.schemToFrame(new Rect(b.getPos(), new Size(b.getSize(), b.getSize())), location, Globals.PIXELS_PER_GRID());
 			if (inScreenSpace(r))
 				g.drawRect((int) r.left(), (int) r.top(), (int) r.getWidth(), (int) r.getHeight());
 		}
 	}
 	
-	private double clipAngle(double r) {
-		while (r > 2 * Math.PI) {
-			r -= Math.PI * 2;
-		}
-		while (r < 0) {
-			r += Math.PI * 2;
-		}
-		return r;	
-	}
-
-	private Shape LightMask(Graphics2D dispG, Graphics g) {
-		double dx = 360 * Math.cos(looking_angle);
-		double dy = 360 * Math.sin(looking_angle);
-
-		double small_radius = 40;
-		Point center = PLAYER_SCREEN_LOC.center();
-
-		Area areas[] = new Area[] { new Area(), new Area() };
-		Triplet<Double, Double, Double> args[] = new Triplet[] {
-				new Triplet<Double, Double, Double>(0.0, -1.0, 0.0),
-				new Triplet<Double, Double, Double>(-6.0, 0.0, -10.0) };
-
-		Area visibility = new Area();
-
-		if (!LIGHT_MODE) {
-			dispG.setBackground(Color.BLACK);
-			dispG.clearRect(0, 0, this.getWidth(), this.getHeight());
-		}
-		if (!SHADOWS_MODE) {
-			visibility.add(new Area(new Rectangle2D.Float(0, 0, this.getWidth(), this.getHeight())));
-		}
-
-		if (!LIGHT_MODE && !SHADOWS_MODE)
-			return visibility;
-
-		Polygon light = new Polygon();
-		double angle_1 = looking_angle - Globals.FLASHLIGHT_FOV;
-		double angle_2 = looking_angle + Globals.FLASHLIGHT_FOV;
-		light.addPoint((int) (center.getX() + small_radius * Math.cos(angle_1)),
-				(int) (center.getY() + small_radius * Math.sin(angle_1)));
-
-		light.addPoint((int) (center.getX() + dx + Globals.FLASHLIGHT_RANGE * Math.cos(angle_1)),
-				(int) (center.getY() + dy + Globals.FLASHLIGHT_RANGE * Math.sin(angle_1)));
-		light.addPoint((int) (center.getX() + dx + Globals.FLASHLIGHT_RANGE * Math.cos(angle_2)),
-				(int) (center.getY() + dy + Globals.FLASHLIGHT_RANGE * Math.sin(angle_2)));
-
-		light.addPoint((int) (center.getX() + small_radius * Math.cos(angle_2)),
-				(int) (center.getY() + small_radius * Math.sin(angle_2)));
-
-		Ellipse2D e2d = new Ellipse2D.Double(center.getX() - Globals.INNER_RADIUS, center.getY() - Globals.INNER_RADIUS,
-				Globals.INNER_RADIUS * 2, Globals.INNER_RADIUS * 2);
-
-		if (LIGHT_MODE) {
-
-			RadialGradientPaint rgp = new RadialGradientPaint(new Point2D.Double(center.getX(), center.getY()),
-					(float) Globals.INNER_RADIUS,
-					new float[] { 0.0f, 0.5f, 1.0f },
-					new Color[] { Color.BLACK, new Color(0, 0, 0, 220), new Color(0, 0, 0, 0) });
-
-			dispG.setPaint(rgp);
-			dispG.fill(
-					new Ellipse2D.Double(center.getX() - Globals.INNER_RADIUS, center.getY() - Globals.INNER_RADIUS,
-							Globals.INNER_RADIUS * 2, Globals.INNER_RADIUS * 2));
-
-			GradientPaint gp = new GradientPaint(new Point2D.Double(center.getX(), center.getY()),
-			Color.BLACK,
-			new Point2D.Double(center.getX() + Globals.FLASHLIGHT_RANGE *
-			Math.cos(looking_angle),
-			center.getY() + Globals.FLASHLIGHT_RANGE * Math.sin(looking_angle)),
-			new Color(0, 0, 0, 0));
-			dispG.setPaint(gp);
-			dispG.fill(light);
-
-			dispG.setPaint(null);
-
-		}
-		if (SHADOWS_MODE) {
-			visibility.add(new Area(e2d));
-			visibility.add(new Area(light));
-		}
-
-		if (SHADOWS_MODE) {
-
-			for (LevelWall w : walls) {
-				Rect rect = SchemUtilities.schemToFrame(w, location, Globals.PIXELS_PER_GRID());
-				if (inScreenSpace(rect)) {
-					Point PLAYER_CENTER = PLAYER_SCREEN_LOC.center();
-					Point WALL_CENTER = rect.center();
-					double overall_angle = clipAngle(Math.atan2(PLAYER_CENTER.getY() - WALL_CENTER.getY(),
-							WALL_CENTER.getX() - PLAYER_CENTER.getX()));
-					double angle_tl = clipAngle(Math.atan2(PLAYER_CENTER.getY() - rect.top(),
-							rect.left() - PLAYER_CENTER.getX()));
-					double angle_tr = clipAngle(Math.atan2(PLAYER_CENTER.getY() - rect.top(),
-							rect.right() - PLAYER_CENTER.getX()));
-					double angle_bl = clipAngle(Math.atan2(PLAYER_CENTER.getY() - rect.bottom(),
-							rect.left() - PLAYER_CENTER.getX()));
-					double angle_br = clipAngle(Math.atan2(PLAYER_CENTER.getY() - rect.bottom(),
-							rect.right() - PLAYER_CENTER.getX()));
-
-					for (int i = 0; i < areas.length; i++) {
-						Polygon o = new Polygon();
-						Double center_points_buff = args[i].getValue0();
-						Double corner_buff = args[i].getValue1();
-						Double end_buff = args[i].getValue2();
-
-						Point inner_first = null;
-						Pair<String, Point> outer_first = null;
-						Pair<String, Point> outer_last = null;
-						Point inner_last = null;
-
-						if (angle_br >= 0 && angle_br < Math.PI / 2) {
-							inner_first = new Point((int) (rect.right() - corner_buff),
-									(int) (rect.bottom() - corner_buff));
-
-							outer_first = PointOnScreenEdge(angle_br,
-									new Point(rect.right() - end_buff,
-											rect.bottom() - end_buff));
-
-						} else if (angle_tr >= Math.PI / 2 && angle_tr < Math.PI) {
-							inner_first = new Point((int) (rect.right() - corner_buff),
-									(int) Math.ceil(rect.top() + corner_buff));
-
-							outer_first = PointOnScreenEdge(angle_tr,
-									new Point(rect.right() - end_buff, rect.top() + end_buff));
-
-						} else if (angle_tl >= Math.PI && angle_tl < Math.PI * 3 / 2) {
-							inner_first = new Point((int) Math.ceil(rect.left() + corner_buff),
-									(int) Math.ceil(rect.top() + corner_buff));
-
-							outer_first = PointOnScreenEdge(angle_tl,
-									new Point(rect.left() + end_buff, rect.top() + end_buff));
-
-						} else if (angle_bl >= Math.PI * 3 / 2 && angle_bl < Math.PI * 2) {
-							inner_first = new Point((int) Math.ceil(rect.left() + corner_buff),
-									(int) (rect.bottom() - corner_buff));
-
-							outer_first = PointOnScreenEdge(angle_bl,
-									new Point(rect.left() + end_buff, rect.bottom() + end_buff));
-
-						}
-
-						// g.setColor(Color.RED);
-						// g.drawLine((int)rect.left(), (int)rect.top(), (int)(rect.left()+100*Math.cos(angle_tl)), (int)(rect.top()-100*Math.sin(angle_tl)));
-
-						// g.setColor(Color.RED);
-						// g.drawLine((int)rect.left(), (int)rect.bottom(), (int)(rect.left()+100*Math.cos(angle_bl)), (int)(rect.bottom()-100*Math.sin(angle_bl)));
-
-						// g.setColor(Color.RED);
-						// g.drawLine((int)rect.right(), (int)rect.top(), (int)(rect.right()+100*Math.cos(angle_tr)), (int)(rect.top()-100*Math.sin(angle_tr)));
-
-						// g.setColor(Color.RED);
-						// g.drawLine((int)rect.right(), (int)rect.bottom(), (int)(rect.right()+100*Math.cos(angle_br)), (int)(rect.bottom()-100*Math.sin(angle_br)));
-
-
-						if (angle_tl >= 0 && angle_tl < Math.PI / 2) {//0-1.57  4.8
-							outer_last = PointOnScreenEdge(angle_tl,
-									new Point(rect.left() + end_buff, rect.top() + end_buff));
-
-							inner_last = new Point((int) Math.ceil(rect.left() + corner_buff),
-									(int) Math.ceil(rect.top() + corner_buff));
-
-						} else if (angle_bl >= Math.PI / 2 && angle_bl < Math.PI) {//1.57-3.14
-							outer_last = PointOnScreenEdge(angle_bl,
-									new Point(rect.left() + end_buff, rect.bottom() - end_buff));
-
-							inner_last = new Point((int) Math.ceil(rect.left() + corner_buff),
-									(int) (rect.bottom() - corner_buff));
-
-						} else if (angle_br >= Math.PI && angle_br < Math.PI * 3 / 2) {//3.14-4.71
-							outer_last = PointOnScreenEdge(angle_br,
-									new Point(rect.right() - end_buff, rect.bottom() - end_buff));
-
-							inner_last = new Point((int) (rect.right() - corner_buff),
-									(int) (rect.bottom() - corner_buff));
-
-						} else if (angle_tr >= Math.PI * 3 / 2 && angle_tr < Math.PI * 2) {//4.71-6.28
-							outer_last = PointOnScreenEdge(angle_tr,
-									new Point(rect.right() - end_buff, rect.top() + end_buff));
-
-							inner_last = new Point((int) (rect.right() - corner_buff),
-									(int) Math.ceil(rect.top() + corner_buff));
-
-						}
-
-						if (inner_first != null) {
-							o.addPoint((int) inner_first.getX(), (int) inner_first.getY());
-							if (i == 0) {
-								g.setColor(Color.WHITE);
-								g.fillRect((int) inner_first.getX() - Globals.OVERLAY_MARKER_SIZE / 2,
-										(int) inner_first.getY() - Globals.OVERLAY_MARKER_SIZE / 2,
-										Globals.OVERLAY_MARKER_SIZE, Globals.OVERLAY_MARKER_SIZE);
-							}
-						}
-
-						if (outer_first != null) {
-							o.addPoint((int) outer_first.getValue1().getX(), (int) outer_first.getValue1().getY());
-							if (i == 0) {
-								g.setColor(Color.ORANGE);
-								g.fillRect((int) outer_first.getValue1().getX() - Globals.OVERLAY_MARKER_SIZE / 2,
-										(int) outer_first.getValue1().getY() - Globals.OVERLAY_MARKER_SIZE / 2,
-										Globals.OVERLAY_MARKER_SIZE, Globals.OVERLAY_MARKER_SIZE);
-							}
-						}
-						if (outer_first != null && outer_last != null) {
-							if (!outer_first.getValue0().equals(outer_last.getValue0())) {
-								if ((outer_first.getValue0().equals("top") && outer_last.getValue0().equals("left"))
-										||
-										(outer_first.getValue0().equals("left")
-												&& outer_last.getValue0().equals("top"))) {
-									o.addPoint(0, 0);
-								} else if ((outer_first.getValue0().equals("top")
-										&& outer_last.getValue0().equals("right"))
-										||
-										(outer_first.getValue0().equals("right")
-												&& outer_last.getValue0().equals("top"))) {
-									o.addPoint(this.getWidth(), 0);
-								} else if ((outer_first.getValue0().equals("bottom")
-										&& outer_last.getValue0().equals("left")) ||
-										(outer_first.getValue0().equals("left")
-												&& outer_last.getValue0().equals("bottom"))) {
-									o.addPoint(0, this.getHeight());
-								} else if ((outer_first.getValue0().equals("bottom")
-										&& outer_last.getValue0().equals("right")) ||
-										(outer_first.getValue0().equals("right")
-												&& outer_last.getValue0().equals("bottom"))) {
-									o.addPoint(this.getWidth(), this.getHeight());
-								} else if ((outer_first.getValue0().equals("top")
-										&& outer_last.getValue0().equals("bottom")) ||
-										(outer_first.getValue0().equals("bottom")
-												&& outer_last.getValue0().equals("top"))) {
-									if (overall_angle >= Math.PI / 2 && overall_angle < Math.PI * 3 / 2) {
-										o.addPoint(0, 0);
-										o.addPoint(0, this.getHeight());
-									} else {
-										o.addPoint(this.getWidth(), this.getHeight());
-										o.addPoint(this.getWidth(), 0);
-									}
-								} else if ((outer_first.getValue0().equals("left")
-										&& outer_last.getValue0().equals("right")) ||
-										(outer_first.getValue0().equals("right")
-												&& outer_last.getValue0().equals("left"))) {
-									if (overall_angle >= 0 && overall_angle < Math.PI) {
-										o.addPoint(0, 0);
-										o.addPoint(this.getWidth(), 0);
-									} else {
-										o.addPoint(0, this.getHeight());
-										o.addPoint(this.getWidth(), this.getHeight());
-									}
-								}
-							}
-						}
-
-						if (outer_last != null) {
-							o.addPoint((int) outer_last.getValue1().getX(), (int) outer_last.getValue1().getY());
-							if (i == 0) {
-								g.setColor(Color.BLUE);
-								g.fillRect((int) outer_last.getValue1().getX() - Globals.OVERLAY_MARKER_SIZE / 2,
-										(int) outer_last.getValue1().getY() - Globals.OVERLAY_MARKER_SIZE / 2,
-										Globals.OVERLAY_MARKER_SIZE, Globals.OVERLAY_MARKER_SIZE);
-							}
-						}
-
-						if (inner_last != null) {
-							o.addPoint((int) inner_last.getX(), (int) inner_last.getY());
-							if (i == 0) {
-								g.setColor(Color.GREEN);
-								g.fillRect((int) inner_last.getX() - Globals.OVERLAY_MARKER_SIZE / 2,
-										(int) inner_last.getY() - Globals.OVERLAY_MARKER_SIZE / 2,
-										Globals.OVERLAY_MARKER_SIZE, Globals.OVERLAY_MARKER_SIZE);
-							}
-						}
-
-						if (angle_bl > Math.PI / 2 && angle_bl < Math.PI && angle_br > 0
-								&& angle_br < Math.PI / 2) {
-							o.addPoint((int) (rect.left() + center_points_buff),
-									(int) (rect.bottom() + center_points_buff));
-							o.addPoint((int) (rect.right() - center_points_buff),
-									(int) (rect.bottom() + center_points_buff));
-						}
-						if (angle_bl > Math.PI / 2 && angle_bl < Math.PI && angle_tr > Math.PI / 2
-								&& angle_tr < Math.PI) {
-							o.addPoint((int) (rect.right() + center_points_buff),
-									(int) (rect.bottom() + center_points_buff));
-						}
-						if (angle_tr > Math.PI / 2 && angle_tr < Math.PI && angle_br > Math.PI
-								&& angle_br < Math.PI * 3 / 2) {
-							o.addPoint((int) (rect.right() + center_points_buff),
-									(int) (rect.bottom() - center_points_buff));
-							o.addPoint((int) (rect.right() + center_points_buff),
-									(int) (rect.top() + center_points_buff));
-						}
-						if (angle_tr > Math.PI && angle_tr < Math.PI * 3 / 2 && angle_br > Math.PI
-								&& angle_br < Math.PI * 3 / 2) {
-							o.addPoint((int) (rect.right() + center_points_buff),
-									(int) (rect.top() - center_points_buff));
-						}
-						if (angle_tl > Math.PI && angle_tl < Math.PI * 3 / 2 && angle_tr > Math.PI * 3 / 2
-								&& angle_tr < Math.PI * 2) {
-							o.addPoint((int) (rect.right() - center_points_buff),
-									(int) (rect.top() - center_points_buff));
-							o.addPoint((int) (rect.left() + center_points_buff),
-									(int) (rect.top() - center_points_buff));
-						}
-						if (angle_tr > Math.PI * 3 / 2 && angle_tr < Math.PI * 2 && angle_bl > Math.PI * 3 / 2
-								&& angle_bl < Math.PI * 2) {
-							o.addPoint((int) (rect.left() - center_points_buff),
-									(int) (rect.top() - center_points_buff));
-						}
-						if (angle_tl > 0 && angle_tl < Math.PI / 2 && angle_br > Math.PI * 3 / 2
-								&& angle_br < Math.PI * 2) {
-							o.addPoint((int) (rect.left() - center_points_buff),
-									(int) (rect.top() + center_points_buff));
-							o.addPoint((int) (rect.left() - center_points_buff),
-									(int) (rect.bottom() - center_points_buff));
-						}
-						if (angle_tl > 0 && angle_tl < Math.PI / 2 && angle_br > 0 && angle_br < Math.PI / 2) {
-							o.addPoint((int) (rect.left() - center_points_buff),
-									(int) (rect.bottom() + center_points_buff));
-						}
-						areas[i].add(new Area(o));
-					}
-
-				}
-			}
-
-			visibility.subtract(new Area(areas[0]));
-		}
-		dispG.setPaint(null);
-
-		for (LevelWall wall : walls) {
-			if (inScreenSpace(wall) && wall.getAsset().equals("wood")) {
-				Rect r = SchemUtilities.schemToFrame(wall, location, Globals.PIXELS_PER_GRID());
-				Point obj = r.center();
-
-				Ellipse2D e2d2 = new Ellipse2D.Double(obj.getX() - Globals.LAMP_RADIUS, obj.getY() - Globals.LAMP_RADIUS,
-						Globals.LAMP_RADIUS * 2, Globals.LAMP_RADIUS * 2);
-
-				if (SHADOWS_MODE)
-					visibility.add(new Area(e2d2));
-
-				if (LIGHT_MODE) {
-					RadialGradientPaint rgp = new RadialGradientPaint(new Point2D.Double(obj.getX(), obj.getY()),
-							(float) Globals.LAMP_RADIUS,
-							new float[] { 0.0f, 0.5f, 1.0f },
-							new Color[] { Color.BLACK, new Color(0, 0, 0, 220), new Color(0, 0, 0, 0) });
-
-					dispG.setPaint(rgp);
-					dispG.fill(new Ellipse2D.Double(obj.getX() - Globals.LAMP_RADIUS, obj.getY() - Globals.LAMP_RADIUS,
-							Globals.LAMP_RADIUS * 2, Globals.LAMP_RADIUS * 2));
-				}
-			}
-		}
-
-		Shape vis = areas[1];
-
-		if (SHADOWS_MODE) {
-			for (LevelWall wall : walls) {
-				Rect wallrect = SchemUtilities.schemToFrame(wall, location,
-						Globals.PIXELS_PER_GRID());
-				if (inScreenSpace(wallrect)) {
-					Rectangle2D re = new Rectangle2D.Double((int) Math.round(wallrect.left()),
-							(int) Math.round(wallrect.top()),
-							wallrect.getWidth(),
-							wallrect.getHeight());
-
-					if (WALL_VISIBILITY) {// || !vis.contains(re)
-
-						visibility.add(new Area((Shape) re));
-					}
-				}
-			}
-		}
-
-		return visibility;
-	}
-
 	void drawUI(Graphics2D g) {
 		for (ResetBox b : resetboxes) {
 			Rect r = SchemUtilities.schemToFrame(b, location, Globals.PIXELS_PER_GRID());
@@ -791,7 +382,7 @@ public class Application extends JPanel {
 							(int) newpoint2.getY());
 				}
 			} else {
-				AppAsset a = assets.get(selectasset);
+				ImageAsset a = assets.get(selectasset);
 				if (a != null) {
 					g.drawRect((int) newpoint1.getX(), (int) newpoint1.getY(),
 							(int) (a.size.getWidth() * Globals.PIXELS_PER_GRID()),
@@ -863,6 +454,8 @@ public class Application extends JPanel {
 	}
 
 	void drawDebug(Graphics2D g) {
+		final float point_offset = 0.5f;
+
 		g.setColor(Color.GREEN);
 		g.setStroke(new BasicStroke(1));
 
@@ -886,10 +479,164 @@ public class Application extends JPanel {
 			}
 		}
 
-		if (layers != null) {
-			PathFinding.displayPath(g, layers, location, (double)Globals.PIXELS_PER_GRID(), Enemy.check);
+		g.setColor(Color.BLUE);
+		g.setStroke(new BasicStroke(4));
+
+			for (LevelTile o : newTiles) {
+
+				Rect r = SchemUtilities.schemToFrame(o, location, Globals.PIXELS_PER_GRID());
+				if (inScreenSpace(r))
+					paintLevelTile(g, (LevelTile) o);
+
+			}
+			for (LevelWall o : newWalls) {
+				Rect r = SchemUtilities.schemToFrame(o, location,
+						Globals.PIXELS_PER_GRID());
+				if (inScreenSpace(r))
+					paintLevelWall(g, (LevelWall) o);
+			}
+
+			for (Collider o : colliders) {
+				Line r = SchemUtilities.schemToFrame(o, location, Globals.PIXELS_PER_GRID());
+				if (inScreenSpace(r))
+					g.drawLine((int) r.getX1(), (int) r.getY1(), (int) r.getX2(), (int) r.getY2());
+			}
+
+			g.setColor(Color.ORANGE);
+			for (Collider o : newColliders) {
+				Line l = SchemUtilities.schemToFrame(o, location, Globals.PIXELS_PER_GRID());
+
+				if (inScreenSpace(l))
+					g.drawLine((int) l.getX1(), (int) l.getY1(), (int) l.getX2(), (int) l.getY2());
+			}
+
+		if (enemy.getPath() != null) {
+			List<Point> points = enemy.getPath();
+			final int psize = 3;
+			
+			for (Point point : points) {
+				Point p2 = SchemUtilities.schemToFrame(new Point(point.getX() + point_offset, point.getY() + point_offset), location,
+						Globals.PIXELS_PER_GRID());
+				g.drawOval((int) p2.getX() - psize, (int) p2.getY() - psize, psize * 2, psize * 2);
+			}
+			g.setStroke(new BasicStroke(4));
+			for (int i = 0; i < points.size() - 1; i++) {
+				Point current = points.get(i);
+				Point next = points.get(i + 1);
+
+				Point p1 = SchemUtilities.schemToFrame(new Point(current.getX() + point_offset, current.getY() + point_offset), location,
+						Globals.PIXELS_PER_GRID());
+				Point p2 = SchemUtilities.schemToFrame(new Point(next.getX() + point_offset, next.getY() + point_offset), location,
+						Globals.PIXELS_PER_GRID());
+				g.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY());
+			}
 		}
 
+		int z2 = 4;
+		g.setColor(Color.ORANGE);
+		for (Collider c : subdivided_colliders) {
+			for (Point pt : PathfindingUtil.getAdjacentPoints(c)) {
+				Point pt2 = SchemUtilities.schemToFrame(pt, location, Globals.PIXELS_PER_GRID());
+				g.fillOval((int) pt2.getX() - z2, (int) pt2.getY() - z2, z2 * 2, z2 * 2);
+			}
+		}
+
+		List<Collider> closeColliders = subdivided_colliders.stream().filter(c -> c.center().distance(playerSchemRoundedPos().DPoint()) < 2)
+				.collect(Collectors.toList());
+
+		g.setColor(Color.BLUE);
+		for (Point p3 : PathfindingUtil.getCorners(closeColliders)) {
+			Point p4 = SchemUtilities.schemToFrame(p3.shift(-point_offset, -point_offset), location, Globals.PIXELS_PER_GRID());
+			g.fillOval((int) p4.getX() - z2, (int) p4.getY() - z2, z2 * 2, z2 * 2);
+		}
+		//lines
+
+		g.setStroke(new BasicStroke(3));
+		g.setColor(Color.RED);
+		for (Line l2 : PathfindingUtil.getCornerLines(closeColliders)) {
+			Point p1 = SchemUtilities.schemToFrame(l2.getP1().shift(-point_offset, -point_offset), location, Globals.PIXELS_PER_GRID());
+			Point p2 = SchemUtilities.schemToFrame(l2.getP2().shift(-point_offset, -point_offset), location, Globals.PIXELS_PER_GRID());
+			g.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY());
+		}
+
+		if (layers != null) {
+			PathfindingUtil.displayPath(g, layers, location, (double)Globals.PIXELS_PER_GRID(), Enemy.check);
+		}
+
+		
+		g.fillRect((int) PLAYER_SCREEN_LOC.left() - z2, (int) PLAYER_SCREEN_LOC.top() - z2, 2 * z2, 2 * z2);
+		g.setColor(Color.RED);
+		Point enemyP = SchemUtilities.schemToFrame(new Point(enemy.getPos().getX(), enemy.getPos().getY()), location,
+				Globals.PIXELS_PER_GRID());
+		g.fillOval((int) enemyP.getX() - 2, (int) enemyP.getY() - 2, 4, 4);
+
+	}
+	/*
+	 * PAINT METHOD
+	 */
+
+	public Rect LEVEL_SCREEN_SPACE;
+	VolatileImage display = null;
+	VolatileImage extra = null;
+
+	AlphaComposite ac_def = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f);
+	AlphaComposite ac = AlphaComposite.getInstance(AlphaComposite.SRC_IN, 1.0f);
+
+	@Override
+	public void paint(Graphics g1) {
+		Graphics2D g = (Graphics2D) g1;
+
+		g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_SPEED);
+		g.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_SPEED);
+		g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_OFF);
+
+		LEVEL_SCREEN_SPACE = new Rect(
+				Math.max(0, LEVEL_BOUND.left() * Globals.PIXELS_PER_GRID() - location.getX()),
+				Math.max(0, LEVEL_BOUND.top() * Globals.PIXELS_PER_GRID() - location.getY()),
+				Math.min(this.getWidth(), LEVEL_BOUND.right() * Globals.PIXELS_PER_GRID() - location.getX()),
+				Math.min(this.getHeight(), LEVEL_BOUND.bottom() * Globals.PIXELS_PER_GRID() - location.getY()));
+
+		Graphics2D dispG = (Graphics2D) display.getGraphics();
+		Graphics2D extraG = (Graphics2D) extra.getGraphics();
+
+		dispG.setBackground(new Color(0, 0, 0, 0));
+		dispG.clearRect(0, 0, display.getWidth(), display.getHeight());
+		extraG.setBackground(new Color(0, 0, 0, 0));
+		extraG.clearRect(0, 0, extra.getWidth(), extra.getHeight());
+		g.setBackground(Color.BLACK);
+		g.clearRect(0, 0, this.getWidth(), this.getHeight());
+
+		if (LIGHT_MODE || SHADOWS_MODE) {
+			dispG.setComposite(ac_def);
+
+			Shape mask = ShaderUtil.LightMask(dispG, extraG, SHADOWS_MODE, LIGHT_MODE, FLASHLIGHT_ENABLED);
+			dispG.setClip(mask);
+
+			dispG.setComposite(ac);
+
+			RawGame(dispG);
+
+			dispG.setComposite(ac_def);
+			dispG.setClip(null);
+
+		} else {
+			RawGame(dispG);
+		}
+
+		if (OVERLAY_MODE) {
+			dispG.drawImage(extra, 0, 0, null);
+			drawDebug(dispG);
+		}
+
+		drawUI(dispG);
+		drawDebugMenu(dispG);
+
+		
+		g.drawImage(display, 0, 0, this.getWidth(), this.getHeight(), null);
+
+	}
+
+	private void drawDebugMenu(Graphics2D g) {
 		if (SHOW_ASSETS_MENU) {
 			ArrayList<String> keys = new ArrayList<String>(assets.keySet());
 
@@ -968,138 +715,6 @@ public class Application extends JPanel {
 			}
 		}
 
-		int c = 4;
-		g.fillRect((int)PLAYER_SCREEN_LOC.left()-c, (int)PLAYER_SCREEN_LOC.top()-c, 2*c, 2*c);
-	}
-	/*
-	 * PAINT METHOD
-	 */
-
-	Rect LEVEL_SCREEN_SPACE;
-	VolatileImage display = null;
-	VolatileImage extra = null;
-
-	AlphaComposite ac_def = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f);
-	AlphaComposite ac = AlphaComposite.getInstance(AlphaComposite.SRC_IN, 1.0f);
-
-	@Override
-	public void paint(Graphics g1) {
-		Graphics2D g = (Graphics2D) g1;
-
-		g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_SPEED);
-		g.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_SPEED);
-		g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_OFF);
-
-		LEVEL_SCREEN_SPACE = new Rect(
-				Math.max(0, LEVEL_BOUND.left() * Globals.PIXELS_PER_GRID() - location.getX()),
-				Math.max(0, LEVEL_BOUND.top() * Globals.PIXELS_PER_GRID() - location.getY()),
-				Math.min(this.getWidth(), LEVEL_BOUND.right() * Globals.PIXELS_PER_GRID() - location.getX()),
-				Math.min(this.getHeight(), LEVEL_BOUND.bottom() * Globals.PIXELS_PER_GRID() - location.getY()));
-
-		Graphics2D dispG = (Graphics2D) display.getGraphics();
-		Graphics2D extraG = (Graphics2D) extra.getGraphics();
-
-		dispG.setBackground(new Color(0, 0, 0, 0));
-		dispG.clearRect(0, 0, display.getWidth(), display.getHeight());
-		extraG.setBackground(new Color(0, 0, 0, 0));
-		extraG.clearRect(0, 0, extra.getWidth(), extra.getHeight());
-		g.setBackground(Color.BLACK);
-		g.clearRect(0, 0, this.getWidth(), this.getHeight());
-
-		if (LIGHT_MODE || SHADOWS_MODE) {
-			dispG.setComposite(ac_def);
-
-			Shape mask = LightMask(dispG, extraG);
-			dispG.setClip(mask);
-
-			/*
-			 * dispG.setColor(new Color(0, 0, 0, 25));
-			 * dispG.fillRect(0, 0, this.getWidth(), this.getHeight());
-			 */
-
-			dispG.setComposite(ac);
-
-			RawGame(dispG);
-
-			dispG.setComposite(ac_def);
-			dispG.setClip(null);
-
-		} else {
-			RawGame(dispG);
-		}
-
-		drawUI(dispG);
-		drawDebug(dispG);
-
-		if (OVERLAY_MODE)
-			dispG.drawImage(extra, 0, 0, null);
-
-		g.drawImage(display, 0, 0, this.getWidth(), this.getHeight(), null);
-
-		g.setColor(Color.GREEN);
-		g.setStroke(new BasicStroke(4));
-		g.drawRect(0, 0, this.getWidth(), this.getHeight());
-
-		final double pz = 0.5;//0.5
-		int z = 5;
-		g.setColor(Color.RED);
-		Point enemyP = SchemUtilities.schemToFrame(new Point(enemy.getPos().getX(), enemy.getPos().getY()), location,
-				Globals.PIXELS_PER_GRID());
-		g.fillOval((int) enemyP.getX() - z, (int) enemyP.getY() - z, z * 2, z * 2);
-
-		g.setColor(Color.YELLOW);
-		Point pnew = SchemUtilities.schemToFrame(new Point(enemy.getPos().getX() + pz, enemy.getPos().getY() + pz),
-				location, Globals.PIXELS_PER_GRID());
-		g.fillOval((int) (pnew.getX() - enemy.getSize() / 2), (int) (pnew.getY() - enemy.getSize() / 2),
-				(int) enemy.getSize(), (int) enemy.getSize());
-
-		if (enemy.getPath() != null) {
-			List<Point> points = enemy.getPath();
-			final int psize = 3;
-			
-			for (Point point : points) {
-				Point p2 = SchemUtilities.schemToFrame(new Point(point.getX() + pz, point.getY() + pz), location,
-						Globals.PIXELS_PER_GRID());
-				g.drawOval((int) p2.getX() - psize, (int) p2.getY() - psize, psize * 2, psize * 2);
-			}
-			g.setStroke(new BasicStroke(4));
-			for (int i = 0; i < points.size() - 1; i++) {
-				Point current = points.get(i);
-				Point next = points.get(i + 1);
-
-				Point p1 = SchemUtilities.schemToFrame(new Point(current.getX() + pz, current.getY() + pz), location,
-						Globals.PIXELS_PER_GRID());
-				Point p2 = SchemUtilities.schemToFrame(new Point(next.getX() + pz, next.getY() + pz), location,
-						Globals.PIXELS_PER_GRID());
-				g.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY());
-			}
-		}
-
-		int z2 = 4;
-		g.setColor(Color.ORANGE);
-		for (Collider c : subdivided_colliders) {
-			for (Point pt : PathFinding.getAdjacentPoints(c)) {
-				Point pt2 = SchemUtilities.schemToFrame(pt, location, Globals.PIXELS_PER_GRID());
-				g.fillOval((int) pt2.getX() - z2, (int) pt2.getY() - z2, z2 * 2, z2 * 2);
-			}
-		}
-
-		List<Collider> closeColliders = subdivided_colliders.stream().filter(c -> c.center().distance(playerSchemRoundedPos().DPoint()) < 2)
-				.collect(Collectors.toList());
-
-		g.setColor(Color.BLUE);
-		for (Point p3 : PathFinding.getCorners(closeColliders)) {
-			Point p4 = SchemUtilities.schemToFrame(p3.shift(-pz, -pz), location, Globals.PIXELS_PER_GRID());
-			g.fillOval((int) p4.getX() - z2, (int) p4.getY() - z2, z2 * 2, z2 * 2);
-		}
-		//lines
-
-		g.setColor(Color.RED);
-		for (Line l2 : PathFinding.getCornerLines(closeColliders)) {
-			Point p1 = SchemUtilities.schemToFrame(l2.getP1().shift(-pz, -pz), location, Globals.PIXELS_PER_GRID());
-			Point p2 = SchemUtilities.schemToFrame(l2.getP2().shift(-pz, -pz), location, Globals.PIXELS_PER_GRID());
-			g.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY());
-		}
 	}
 
 	/*
@@ -1138,32 +753,6 @@ public class Application extends JPanel {
 		}
 	}
 
-	public Pair<String, Point> PointOnScreenEdge(double angle, Point start_point) {
-		double x0 = start_point.getX();
-		double y0 = start_point.getY();
-
-		double slope = Math.tan(angle);
-		int dx = (int) Math.copySign(1, Math.cos(angle));
-		int dy = (int) Math.copySign(1, Math.sin(angle));
-
-		double xf_0 = (x0 + (y0) / slope);
-		double xf_H = (x0 + (y0 - this.getHeight()) / slope);
-		double yf_0 = (y0 + (x0) * slope);
-		double yf_W = (y0 + (x0 - this.getWidth()) * slope);
-
-		if (xf_0 > 0 && xf_0 < this.getWidth() && dy == 1) {
-			return new Pair<String, Point>("top", new Point((int) xf_0, 0));
-		} else if (xf_H > 0 && xf_H < this.getWidth() && dy == -1) {
-			return new Pair<String, Point>("bottom", new Point((int) xf_H, this.getHeight()));
-		}
-		if (yf_0 > 0 && yf_0 < this.getHeight() && dx == -1) {
-			return new Pair<String, Point>("left", new Point(0, (int) yf_0));
-		} else if (yf_W > 0 && yf_W < this.getHeight() && dx == 1) {
-			return new Pair<String, Point>("right", new Point(this.getWidth(), (int) yf_W));
-		}
-		return new Pair<String, Point>("none", new Point(0, 0));
-	}
-
 	/*
 	 * MOUSE CLICK EVENT
 	 */
@@ -1184,7 +773,7 @@ public class Application extends JPanel {
 				}
 
 			} else if (selection_type == 1) {
-				AppAsset a = assets.get(selectasset);
+				ImageAsset a = assets.get(selectasset);
 
 				Rect r = new Rect(select_point_1.getX(), select_point_1.getY(), a.size.getWidth(),
 						a.size.getHeight());
@@ -1192,7 +781,7 @@ public class Application extends JPanel {
 				LevelWall c = new LevelWall(r.left(), r.top(), r.getWidth(), r.getHeight(), 0.0f, selectasset);
 				newWalls.add(c);
 			} else if (selection_type == 2) {
-				AppAsset a = assets.get(selectasset);
+				ImageAsset a = assets.get(selectasset);
 
 				Rect r = new Rect(select_point_1.getX(), select_point_1.getY(), a.size.getWidth(),
 						a.size.getHeight());
@@ -1200,7 +789,7 @@ public class Application extends JPanel {
 				LevelTile c = new LevelTile(r.left(), r.top(), r.getWidth(), r.getHeight(), 0.0f, selectasset);
 				newTiles.add(c);
 			} else if (selection_type == 0) {
-				AppAsset a = assets.get(selectasset);
+				ImageAsset a = assets.get(selectasset);
 
 				Rect r = new Rect(select_point_1.getX(), select_point_1.getY(), a.size.getWidth(),
 						a.size.getHeight());
@@ -1223,20 +812,22 @@ public class Application extends JPanel {
 	void FireBullet() {
 		Gun g = (Gun) weapon;
 
-		if (g.MAG_TYPE() != g.mag.NAME()) {
-			System.out.println("WRONG MAG INSERTED");
-		}
+		// if (g.MAG_TYPE() != g.mag.NAME()) {
+		// 	System.out.println("WRONG MAG INSERTED");
+		// }
 
-		Point arm = new Point(PLAYER_SCREEN_LOC.left() + location.getX() + Globals.PLAYER_SIZE / 2,
-				PLAYER_SCREEN_LOC.top() + location.getY() + Globals.PLAYER_SIZE / 2);
+		Point arm = new Point(PLAYER_SCREEN_LOC.center().getX() + location.getX(),
+				PLAYER_SCREEN_LOC.center().getY() + location.getY());
 		Point start = new Point(arm.getX() + Globals.BULLET_DEFAULT_DISTANCE * Math.cos(looking_angle),
 				arm.getY() + Globals.BULLET_DEFAULT_DISTANCE * Math.sin(looking_angle));
 
 		Point end = new Point(start.getX() / Globals.PIXELS_PER_GRID(),
-				start.getY()/ Globals.PIXELS_PER_GRID());
-		Bullet b = new Bullet(end.getX(), end.getY(), g.BULLET_SIZE()*Globals.BULLET_SIZE_MULT, looking_angle,
-				g.mag.BULLET_INITIAL_SPEED() * Globals.BULLET_SPEED_MULT);
-		bullets.add(b);
+				start.getY() / Globals.PIXELS_PER_GRID());
+		
+		Bullet b = new Bullet(end.getX(), end.getY(), g.mag.BULLET_SIZE()*Globals.BULLET_SIZE_MULT, looking_angle,
+				g.mag.BULLET_SPEED() * Globals.BULLET_SPEED_MULT);
+		
+				bullets.add(b);
 
 		last_fire_tick = entry.tick;
 		g.mag.bullet_count--;
@@ -1342,13 +933,13 @@ public class Application extends JPanel {
 				intent_x--;
 
 			if (intent_x != 0 || intent_y != 0) {
-				intent = Vector.fromComponentsUnitVector(intent_x, intent_y);
+				intent = PolarLine.fromComponentsUnitVector(intent_x, intent_y);
 			} else {
-				intent = Vector.zero();
+				intent = PolarLine.zero();
 			}
 
 			if (entry.peripherals.KeyToggled(KeyEvent.VK_U)) {
-				((Gun) weapon).mag = ItemAttributes.DevTek_Mag();
+				((Gun) weapon).mag = new Magazine(10, "GUN TEST NAME", 2, 0.4);
 			}
 
 			if (entry.peripherals.KeyToggled(KeyEvent.VK_O)) {
@@ -1362,7 +953,7 @@ public class Application extends JPanel {
 				IntPoint pos = enemy.getIntPos();
 				// layers = PathFinding.PathFindDebug(new PathNode(pos.getX(), pos.getY(), null), 10,
 				// Enemy.check);
-				layers = PathFinding.PathFindByWallsDebug(new PathNode(pos, null), 4, colliders);
+				layers = PathfindingUtil.PathFindByWallsDebug(new PathNode(pos, null), 4, colliders);
 			}
 
 			
@@ -1380,9 +971,9 @@ public class Application extends JPanel {
 
 		if (velocity.getMagnitude() > Globals.PLAYER_MAX_SPEED)
 			velocity.setMagnitude(Globals.PLAYER_MAX_SPEED);
-		if (intent.equals(Vector.zero())) {
+		if (intent.equals(PolarLine.zero())) {
 			if (velocity.getMagnitude() < Globals.PLAYER_MIN_SPEED_CUTOFF)
-				velocity = Vector.zero();
+				velocity = PolarLine.zero();
 			else
 				velocity = velocity.addVector(velocity.multiply(-0.08));
 		}
@@ -1390,96 +981,31 @@ public class Application extends JPanel {
 		component_x = velocity.getX();
 		component_y = velocity.getY();
 
-		if (!CLIP_MODE) {
-			{
-				CollisionReturn ret = objectCollision(PLAYER_SCREEN_LOC, component_x, component_y, true);
-				if (ret != null) {
-					if (ret.y_collision) {
-						component_y = 0;
-						location.setY(location.getY()+ Math.copySign(1, velocity.getY()) * -ret.disp_y);
-					}
-					if (ret.x_collision) {
-						component_x = 0;
-						location.setX(location.getX()+ Math.copySign(1, velocity.getX()) * ret.disp_x);
-					}
-				}
-			}
+		// if (!CLIP_MODE) {
+		// 	{
+		// 		// CollisionReturn ret = objectCollision(PLAYER_SCREEN_LOC, component_x, component_y, true);
+		// 		// if (ret != null) {
+		// 		// 	if (ret.y_collision) {
+		// 		// 		component_y = 0;
+		// 		// 		location.setY(location.getY()+ Math.copySign(1, velocity.getY()) * -ret.disp_y);
+		// 		// 	}
+		// 		// 	if (ret.x_collision) {
+		// 		// 		component_x = 0;
+		// 		// 		location.setX(location.getX()+ Math.copySign(1, velocity.getX()) * ret.disp_x);
+		// 		// 	}
+		// 		// }
+		// 	}
 
-			for (Collider c : colliders) {
-				Line collider = SchemUtilities.schemToFrame(c, location, Globals.PIXELS_PER_GRID());
+		// 	for (Collider c : colliders) {
+		// 		//Line collider = SchemUtilities.schemToFrame(c, location, Globals.PIXELS_PER_GRID());
 
-				for (int i = 0; i < bullets.size(); i++) {
-					Bullet b = bullets.get(i);
-					Rect bullet = new Rect(b.left(), b.top(), b.getWidth(), b.getHeight());
-					double dx = b.speed * Math.cos(b.angle);
-					double dy = b.speed * Math.sin(b.angle);
-
-					double speed_x = dx;
-					double speed_y = dy;
-					double new_angle = Math.atan2(speed_y, speed_x);
-					double new_speed = Math.sqrt(Math.pow(speed_x, 2) + Math.pow(speed_y, 2));
-					b.speed = new_speed;
-					b.angle = new_angle;
-
-					Rect br = SchemUtilities.schemToFrame(bullet, location, Globals.PIXELS_PER_GRID());
-					//boolean ret = CollisionUtil.staticCollision(br, collider);
-
-					// if (ret || Math.sqrt(Math.pow(bullet.getX(), 2) + Math.pow(bullet.getY(), 2)) > 4000) {
-					// 	bullets.remove(i);
-					// 	i--;
-					// } else {
-					// 	b.setX(b.getX() + dx);
-					// 	b.setY(b.getY() + dy);
-					// }
-				}
-
-			}
+		// 	}
+		// }
+		for (int i = 0; i < bullets.size(); i++) {
+			Bullet b = bullets.get(i);
+			b.moveBullet();
 		}
-
-		location.setX(location.getX()+component_x);
-		location.setY(location.getY()- component_y);
-	}
-
-	/*
-	 * CHECKS PLAYER COLLISION WITH ALL OBJECTS IN THE SCENE
-	 */
-	public CollisionReturn objectCollision(Rect a, double dx, double dy, boolean transform_coord) {
-		CollisionReturn colret = null;
-		List<Line> objects = new ArrayList<>();
-		objects.addAll((List<Line>) colliders.stream()
-				.map(c -> (Line) c)
-				.collect(Collectors.toList()));
-		objects.addAll((List<Line>) newColliders.stream()
-				.map(c -> (Line) c)
-				.collect(Collectors.toList()));
-
-		for (Line c : objects) {
-			Line r = c;
-			if (transform_coord)
-				r = SchemUtilities.schemToFrame(c, location, Globals.PIXELS_PER_GRID());
-			if (!inScreenSpace(r))
-				continue;
-			// //CollisionReturn ret = CollisionUtil.DynamicCollision(a, r, dx, dy);
-
-			// if (ret.x_collision || ret.y_collision) {
-			// 	if (colret == null)
-			// 		colret = ret;
-			// 	else {
-			// 		if (ret.x_collision) {
-			// 			colret.x_collision = true;
-			// 			if (Math.abs(ret.disp_x) > Math.abs(colret.disp_x))
-			// 				colret.disp_x = ret.disp_x;
-			// 		}
-			// 		if (ret.y_collision) {
-			// 			colret.y_collision = true;
-			// 			if (Math.abs(ret.disp_y) > Math.abs(colret.disp_y))
-			// 				colret.disp_y = ret.disp_y;
-			// 		}
-			// 	}
-			// }
-
-		}
-		return colret;
+		location = location.shift(component_x, -component_y);
 	}
 
 	/*
@@ -1520,7 +1046,7 @@ public class Application extends JPanel {
 	/*
 	 * CHECK IF RECTANGLE IS INSIDE SCREEN SPACE
 	 */
-	boolean inScreenSpace(Rect r) {
+	public boolean inScreenSpace(Rect r) {
 		return CollisionUtil.RectRectIntersection(LEVEL_SCREEN_SPACE, r);
 	}
 
@@ -1577,7 +1103,7 @@ public class Application extends JPanel {
 	}
 
 	BufferedImage resizeToGrid(BufferedImage img, double width, double height) {
-		return ImageImport.resize(img, (int) (width / Globals.PIXELS_PER_GRID() * Globals.PIXELS_PER_GRID()),
+		return ImageUtil.resize(img, (int) (width / Globals.PIXELS_PER_GRID() * Globals.PIXELS_PER_GRID()),
 				(int) (height / Globals.PIXELS_PER_GRID() * Globals.PIXELS_PER_GRID()));
 	}
 

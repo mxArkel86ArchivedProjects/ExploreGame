@@ -1,6 +1,6 @@
 package gameObjects;
 
-import util.Rect;
+import templates.Rect;
 
 public class ResetBox extends Rect {
     public String checkpoint;

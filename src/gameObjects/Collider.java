@@ -3,8 +3,8 @@ package gameObjects;
 import java.util.ArrayList;
 import java.util.List;
 
-import util.Line;
-import util.Point;
+import templates.Line;
+import templates.Point;
 
 public class Collider extends Line {
 	public Collider(double x, double y, double x2, double y2) {

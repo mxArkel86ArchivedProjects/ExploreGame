@@ -1,6 +1,6 @@
 package gameObjects;
 
-public class LevelWall extends GameObject {
+public class LevelWall extends DepthObject {
 	String asset;
 	
 	public LevelWall(double x, double y, double width, double height, double depth, String asset) {

@@ -2,6 +2,7 @@
 
 [walls]
 brick,43,39,0.000
+brick,43,41,0.000
 
 [tiles]
 grass512,19,24,0.000

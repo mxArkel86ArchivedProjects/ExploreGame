@@ -13,6 +13,8 @@ import gameObjects.LevelTile;
 import gameObjects.LevelWall;
 import gameObjects.ResetBox;
 import main.entry;
+import templates.Point;
+import templates.Size;
 
 public class LevelConfigUtil {
     public static void saveLevel(){

@@ -1,23 +1,21 @@
 package inventory;
 
-public abstract class Gun extends Weapon {
+public class Gun extends Weapon {
     public Magazine mag;
+    private int FIRING_TYPE;
+    private int FIRING_DELAY;
 
-    Gun() {
-        
+    public Gun(Magazine mag, int FIRING_TYPE, int FIRING_DELAY) {
+        this.mag = mag;
+        this.FIRING_TYPE = FIRING_TYPE;
+        this.FIRING_DELAY = FIRING_DELAY;
     }
 
-    public abstract double DAMAGE();
+    public int FIRING_TYPE() {
+        return FIRING_TYPE;
+    }
 
-    public abstract boolean DESTROY_ON_SURFACE();
-
-    public abstract String MAG_TYPE();
-
-    public abstract int FIRING_TYPE();
-
-    public abstract int FIRING_DELAY();
-
-    public abstract int RELOAD_DELAY();
-
-    public abstract int BULLET_SIZE();
+    public int FIRING_DELAY() {
+        return FIRING_DELAY;
+    }
 }

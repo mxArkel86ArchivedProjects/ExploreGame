@@ -1,17 +1,34 @@
 package gameObjects;
 
 import main.Globals;
-import util.Rect;
+import templates.Point;
+import templates.Rect;
 
-public class Bullet extends Rect {
+public class Bullet {
     public double angle;
     public double speed;
+    private double size;
+    private Point topleft;
 
     public Bullet(double x, double y, double size, double angle, double speed) {
-        super(x-size/2, y-size/2, size, size);
         this.angle = angle;
         this.speed = speed;
+        this.size = size;
+        this.topleft = new Point(x, y);
+    }
+    
+    public void moveBullet() {
+        double dx = speed * Math.cos(angle);
+        double dy = speed * Math.sin(angle);
+        topleft = topleft.shift(dx, dy);
     }
 
+    public double getSize() {
+        return size;
+    }
+    
+    public Point getPos() {
+        return topleft;
+    }
     
 }
