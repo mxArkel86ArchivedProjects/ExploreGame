@@ -26,8 +26,8 @@ public class SchemUtilities {
 	}
 	
 	public static Point roundSchemFrame(Point p, Point location, double GRIDSIZE) {
-		Point p2 = SchemUtilities.frameToSchem(p, location, GRIDSIZE);
-		return SchemUtilities.schemToFrame(p2, location, GRIDSIZE);
+		IntPoint p2 = SchemUtilities.frameToSchemInt(p, location, GRIDSIZE);
+		return SchemUtilities.schemToFrame(p2.DPoint(), location, GRIDSIZE);
 	}
 
 	// public static Rect schemToFrameZ(Rect r, Rect PLAYER_SCREEN_LOC, Point location, double depth, double GRIDSIZE) {
@@ -48,8 +48,8 @@ public class SchemUtilities {
 	}
 	
 	public static IntPoint frameToSchemInt(Point p, Point location, double GRIDSIZE) {
-    	return new IntPoint((int)Math.floor((p.getX() + location.getX()) / GRIDSIZE),
-    			(int)Math.floor((p.getY() + location.getY()) / GRIDSIZE));
+    	return new IntPoint((int)Math.round((p.getX() + location.getX()) / GRIDSIZE),
+    			(int)Math.round((p.getY() + location.getY()) / GRIDSIZE));
     }
     
 }

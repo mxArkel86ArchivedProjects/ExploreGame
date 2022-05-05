@@ -30,14 +30,15 @@ public class ShaderUtil {
     public static Shape LightMask(Graphics2D dispG, Graphics2D debug, boolean shading, boolean clipping, boolean flashlight_enabled) {
         double looking_angle = entry.app.looking_angle;
         Point location = entry.app.location;
-        Rect PLAYER_SCREEN_LOC = entry.app.PLAYER_SCREEN_LOC;
+		Point player_pos = entry.app.player_screen_pos;
+		double player_size = Globals.PLAYER_SIZE;
         Rect screen = entry.app.LEVEL_SCREEN_SPACE;
 
     	double dx = 360 * Math.cos(looking_angle);
     	double dy = 360 * Math.sin(looking_angle);
     
     	double small_radius = 40;
-    	Point center = PLAYER_SCREEN_LOC.center();
+		Point center = player_pos;
     
     	
     	Triplet<Double, Double, Double> args[] = new Triplet[] {
@@ -120,7 +121,7 @@ public class ShaderUtil {
     		for (LevelWall w : entry.app.walls) {
     			Rect rect = SchemUtilities.schemToFrame(w, location, Globals.PIXELS_PER_GRID());
     			if (entry.app.inScreenSpace(rect)) {
-    				Point PLAYER_CENTER = PLAYER_SCREEN_LOC.center();
+    				Point PLAYER_CENTER = player_pos;
     				Point WALL_CENTER = rect.center();
     				double overall_angle = MathUtil.clipAngle(Math.atan2(PLAYER_CENTER.getY() - WALL_CENTER.getY(),
     						WALL_CENTER.getX() - PLAYER_CENTER.getX()));

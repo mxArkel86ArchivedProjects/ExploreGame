@@ -41,6 +41,7 @@ import gameObjects.ResetBox;
 import inventory.Gun;
 import inventory.Magazine;
 import inventory.Weapon;
+import templates.CalcVector;
 import templates.ImageAsset;
 import templates.IntPoint;
 import templates.Line;
@@ -52,12 +53,13 @@ import templates.Size;
 import util.CollisionUtil;
 import util.ImageUtil;
 import util.LevelConfigUtil;
+import util.MathUtil;
 import util.PathfindingUtil;
 import util.SchemUtilities;
 import util.ShaderUtil;
 
 public class Application extends JPanel {
-	public Rect PLAYER_SCREEN_LOC = null;
+	public Point player_screen_pos = new Point(0, 0);
 	Rect LEVEL_BOUND = new Rect(0, 0, 0, 0);
 	public Point location = new Point(0, 0);
 
@@ -122,6 +124,7 @@ public class Application extends JPanel {
 	boolean EDIT_MODE = false;
 	boolean CLIP_MODE = false;
 	boolean OVERLAY_MODE = false;
+	boolean DEBUG_MODE = false;
 	boolean SHADOWS_MODE = false;
 	boolean SHOW_ASSETS_MENU = false;
 	boolean FLASHLIGHT_ENABLED = false;
@@ -138,6 +141,14 @@ public class Application extends JPanel {
 	List<PathNode> layers = null;
 
 	List<Collider> subdivided_colliders = null;
+
+	boolean colliding = false;
+
+	CalcVector PMV;
+
+	Point wall_point;
+
+	CalcVector perpendicular;
 
 	/*
 	 * INIT METHOD
@@ -232,6 +243,11 @@ public class Application extends JPanel {
 		}, () -> {
 			return String.valueOf(OVERLAY_MODE);
 		}));
+		debug_opts.add(new Triplet<String, Runnable, Callable<String>>("Toggle Debug [%s]", () -> {
+			DEBUG_MODE = !DEBUG_MODE;
+		}, () -> {
+			return String.valueOf(DEBUG_MODE);
+		}));
 		debug_opts.add(new Triplet<String, Runnable, Callable<String>>("Toggle Edit Mode [%s]", () -> {
 			EDIT_MODE = !EDIT_MODE;
 		}, () -> {
@@ -274,6 +290,10 @@ public class Application extends JPanel {
 			return;
 		}
 
+		Graphics2D g2 = (Graphics2D)debug_tick.getGraphics();
+		g2.setBackground(new Color(0, 0, 0, 0));
+		g2.clearRect(0, 0, overlay.getWidth(), overlay.getHeight());
+
 		enemy.step();
 
 		// if (entry.tick>reassign_tick+5000) {
@@ -307,7 +327,7 @@ public class Application extends JPanel {
 		 * }
 		 * } else
 		 */
-		playerCollisionAndMovementCode();
+		playerCollisionAndMovementCode((Graphics2D)debug_tick.getGraphics());
 
 		/*
 		 * for (ResetBox b : resetboxes) {
@@ -340,8 +360,8 @@ public class Application extends JPanel {
 		}
 
 		g.setColor(Color.YELLOW);
-		g.fillOval((int) PLAYER_SCREEN_LOC.left(), (int) PLAYER_SCREEN_LOC.top(), (int) PLAYER_SCREEN_LOC.getWidth(),
-				(int) PLAYER_SCREEN_LOC.getHeight());
+		g.fillOval((int) (player_screen_pos.getX()-Globals.PLAYER_SIZE/2), (int) (player_screen_pos.getY()-Globals.PLAYER_SIZE/2), (int) Globals.PLAYER_SIZE,
+				(int) Globals.PLAYER_SIZE);
 
 		g.setColor(Color.YELLOW);
 		Point pnew = SchemUtilities.schemToFrame(new Point(enemy.getPos().getX() + 0.5, enemy.getPos().getY() + 0.5),
@@ -406,8 +426,8 @@ public class Application extends JPanel {
 		String focus = selectasset;
 
 		g.drawString(String.format(
-				"raw=(%5.1f,%5.1f)  coord=(%5.1f,%5.1f) typing=%b focus=[%s] select_type=%d debug_val=[%s] tick=%d", mouse.getX(),
-				mouse.getY(), schem_mouse.getX(), schem_mouse.getY(), typing, focus, selection_type, debug_vals.toString(), entry.tick), 20,
+				"raw=(%5.1f,%5.1f)  coord=(%5.1f,%5.1f) typing=%b focus=[%s] select_type=%d debug_val=[%s] colliding=%b tick=%d", mouse.getX(),
+				mouse.getY(), schem_mouse.getX(), schem_mouse.getY(), typing, focus, selection_type, debug_vals.toString(), colliding, entry.tick), 20,
 				g.getFontMetrics().getAscent() + 20);
 
 		if (EDIT_MODE) {
@@ -453,7 +473,7 @@ public class Application extends JPanel {
 		}
 	}
 
-	void drawDebug(Graphics2D g) {
+	void drawOverlay(Graphics2D g) {
 		final float point_offset = 0.5f;
 
 		g.setColor(Color.GREEN);
@@ -564,11 +584,32 @@ public class Application extends JPanel {
 		}
 
 		
-		g.fillRect((int) PLAYER_SCREEN_LOC.left() - z2, (int) PLAYER_SCREEN_LOC.top() - z2, 2 * z2, 2 * z2);
+		g.fillRect((int) player_screen_pos.getX() - z2, (int) player_screen_pos.getY() - z2, 2 * z2, 2 * z2);
 		g.setColor(Color.RED);
 		Point enemyP = SchemUtilities.schemToFrame(new Point(enemy.getPos().getX(), enemy.getPos().getY()), location,
 				Globals.PIXELS_PER_GRID());
 		g.fillOval((int) enemyP.getX() - 2, (int) enemyP.getY() - 2, 4, 4);
+
+		Line screen = SchemUtilities.schemToFrame(
+				new Line(PMV.getX(), PMV.getY(), PMV.getX() + PMV.getDX(), PMV.getY() + PMV.getDY()), location,
+				Globals.PIXELS_PER_GRID());
+
+		g.setStroke(new BasicStroke(4));
+		g.setColor(Color.BLUE);
+		g.drawLine((int) screen.getX1(), (int) screen.getY1(), (int) screen.getX2(), (int) screen.getY2());
+
+		if(wall_point!=null)
+		{
+			Point p = SchemUtilities.schemToFrame(wall_point, location, Globals.PIXELS_PER_GRID());
+			g.setColor(Color.CYAN);
+			g.fillOval((int) p.getX() - z2, (int) p.getY() - z2, z2 * 2, z2 * 2);
+		}
+
+		if (perpendicular != null) {
+			Line l = SchemUtilities.schemToFrame(new Line(wall_point.getX(), wall_point.getY(), wall_point.getX()+perpendicular.getDX(), wall_point.getY()+perpendicular.getDY()), location, Globals.PIXELS_PER_GRID());
+			g.setColor(Color.RED);
+			g.drawLine((int) l.getX1(), (int) l.getY1(), (int) l.getX2(), (int) l.getY2());
+		}
 
 	}
 	/*
@@ -577,7 +618,8 @@ public class Application extends JPanel {
 
 	public Rect LEVEL_SCREEN_SPACE;
 	VolatileImage display = null;
-	VolatileImage extra = null;
+	VolatileImage overlay = null;
+	VolatileImage debug_tick = null;
 
 	AlphaComposite ac_def = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f);
 	AlphaComposite ac = AlphaComposite.getInstance(AlphaComposite.SRC_IN, 1.0f);
@@ -597,12 +639,12 @@ public class Application extends JPanel {
 				Math.min(this.getHeight(), LEVEL_BOUND.bottom() * Globals.PIXELS_PER_GRID() - location.getY()));
 
 		Graphics2D dispG = (Graphics2D) display.getGraphics();
-		Graphics2D extraG = (Graphics2D) extra.getGraphics();
+		Graphics2D extraG = (Graphics2D) overlay.getGraphics();
 
 		dispG.setBackground(new Color(0, 0, 0, 0));
 		dispG.clearRect(0, 0, display.getWidth(), display.getHeight());
 		extraG.setBackground(new Color(0, 0, 0, 0));
-		extraG.clearRect(0, 0, extra.getWidth(), extra.getHeight());
+		extraG.clearRect(0, 0, overlay.getWidth(), overlay.getHeight());
 		g.setBackground(Color.BLACK);
 		g.clearRect(0, 0, this.getWidth(), this.getHeight());
 
@@ -624,8 +666,11 @@ public class Application extends JPanel {
 		}
 
 		if (OVERLAY_MODE) {
-			dispG.drawImage(extra, 0, 0, null);
-			drawDebug(dispG);
+			dispG.drawImage(overlay, 0, 0, null);
+			drawOverlay(dispG);
+		}
+		if (DEBUG_MODE) {
+			dispG.drawImage(debug_tick, 0,0,null);
 		}
 
 		drawUI(dispG);
@@ -730,13 +775,14 @@ public class Application extends JPanel {
 		Point bottomright = new Point((width + Globals.PLAYER_SIZE) / 2,
 		(height + Globals.PLAYER_SIZE) / 2);
 
-		PLAYER_SCREEN_LOC = new Rect(topleft, bottomright);
+		player_screen_pos = new Point(width / 2, height / 2);
 
 		ImageCapabilities ic = new ImageCapabilities(true);
 		try {
 
 			display = gconfig.createCompatibleVolatileImage((int) width, (int) height, ic, Transparency.TRANSLUCENT);
-			extra = gconfig.createCompatibleVolatileImage((int) width, (int) height, ic, Transparency.TRANSLUCENT);
+			overlay = gconfig.createCompatibleVolatileImage((int) width, (int) height, ic, Transparency.TRANSLUCENT);
+			debug_tick = gconfig.createCompatibleVolatileImage((int) width, (int) height, ic, Transparency.TRANSLUCENT);
 		} catch (AWTException e) {
 			e.printStackTrace();
 		}
@@ -759,13 +805,13 @@ public class Application extends JPanel {
 	Point select_point_store = null;
 
 	public void mouseClick(Point pos) {
-		Point select_point_1 = SchemUtilities.frameToSchem(pos, location, Globals.PIXELS_PER_GRID());
+		Point select_point_1 = SchemUtilities.frameToSchemInt(pos, location, Globals.PIXELS_PER_GRID()).DPoint();
 
 		if (EDIT_MODE) {
 			if (selection_type == 0) {
 				if (select_point_store == null)
-					select_point_store = SchemUtilities.frameToSchem(pos, location,
-							Globals.PIXELS_PER_GRID());
+					select_point_store = SchemUtilities.frameToSchemInt(pos, location,
+							Globals.PIXELS_PER_GRID()).DPoint();
 				else {
 					Collider c = new Collider(select_point_store, select_point_1);
 					newColliders.add(c);
@@ -816,8 +862,8 @@ public class Application extends JPanel {
 		// 	System.out.println("WRONG MAG INSERTED");
 		// }
 
-		Point arm = new Point(PLAYER_SCREEN_LOC.center().getX() + location.getX(),
-				PLAYER_SCREEN_LOC.center().getY() + location.getY());
+		Point arm = new Point(player_screen_pos.getX() + location.getX(),
+				player_screen_pos.getY() + location.getY());
 		Point start = new Point(arm.getX() + Globals.BULLET_DEFAULT_DISTANCE * Math.cos(looking_angle),
 				arm.getY() + Globals.BULLET_DEFAULT_DISTANCE * Math.sin(looking_angle));
 
@@ -916,8 +962,8 @@ public class Application extends JPanel {
 
 		if (game) {
 			looking_angle = (Math.atan2(
-					(PLAYER_SCREEN_LOC.center().getY())-entry.peripherals.mousePos().getY(),
-					(PLAYER_SCREEN_LOC.center().getX())-entry.peripherals.mousePos().getX())) % (2 * Math.PI)
+					(player_screen_pos.getY())-entry.peripherals.mousePos().getY(),
+					(player_screen_pos.getX())-entry.peripherals.mousePos().getX())) % (2 * Math.PI)
 					+ Math.PI;
 
 			short intent_x = 0;
@@ -963,7 +1009,8 @@ public class Application extends JPanel {
 	/*
 	 * PLAYER COLLISION AND MOVEMENT CODE
 	 */
-	public void playerCollisionAndMovementCode() {
+	public void playerCollisionAndMovementCode(Graphics2D g) {
+		g.setStroke(new BasicStroke(4));
 		double component_x = 0;
 		double component_y = 0;
 
@@ -981,36 +1028,122 @@ public class Application extends JPanel {
 		component_x = velocity.getX();
 		component_y = velocity.getY();
 
-		double angle = Math.atan2(component_y, component_x);
-		// boolean colliding = CollisionUtil.playerCollisionWithColliders(PLAYER_SCREEN_LOC, angle, location,
-		// 		Globals.PIXELS_PER_GRID(), colliders);
+		if (CLIP_MODE)
+		{
+			location = location.shift(component_x, -component_y);
+			return;
+		}
+		
 
-		// if (!CLIP_MODE) {
-		// 	{
-		// 		// CollisionReturn ret = objectCollision(PLAYER_SCREEN_LOC, component_x, component_y, true);
-		// 		// if (ret != null) {
-		// 		// 	if (ret.y_collision) {
-		// 		// 		component_y = 0;
-		// 		// 		location.setY(location.getY()+ Math.copySign(1, velocity.getY()) * -ret.disp_y);
-		// 		// 	}
-		// 		// 	if (ret.x_collision) {
-		// 		// 		component_x = 0;
-		// 		// 		location.setX(location.getX()+ Math.copySign(1, velocity.getX()) * ret.disp_x);
-		// 		// 	}
-		// 		// }
-		// 	}
+		double r = Globals.PLAYER_SIZE/Globals.PIXELS_PER_GRID()/2;
 
-		// 	for (Collider c : colliders) {
-		// 		//Line collider = SchemUtilities.schemToFrame(c, location, Globals.PIXELS_PER_GRID());
+		Point schemPt = SchemUtilities.frameToSchem(player_screen_pos, location, Globals.PIXELS_PER_GRID());
 
-		// 	}
-		// }
+		//player vector on screen
+		CalcVector movement = new CalcVector(0, 0, component_x/Globals.PIXELS_PER_GRID(), component_y/Globals.PIXELS_PER_GRID());
+		PMV = new CalcVector(schemPt.getX(), schemPt.getY(), r*Math.cos(movement.getAngle()), -r*Math.sin(movement.getAngle())).add(movement);
+		
+
+		List<Integer> indeces = CollisionUtil.playerCollisionWithColliders(schemPt,
+				r*1.2, colliders);
+		colliding = indeces.size() > 0;
+
+		//if (colliding) {
+			List<Collider> colliders_hit = colliders.stream().filter(x -> indeces.contains(colliders.indexOf(x)))
+					.collect(Collectors.toList());
+
+			for (Collider collider : colliders_hit) {
+				//Collider collider = colliders_hit.get(0);
+				CalcVector colliderV = new CalcVector(collider.getX1(), collider.getY1(),
+						collider.getX2() - collider.getX1(), collider.getY2() - collider.getY1());
+				wall_point = CollisionUtil.ClosestPointOnLine(collider, schemPt);
+				perpendicular = MathUtil.perpendicularProjection(PMV, colliderV).getScaledVector(-1,-1).getUnitVector();
+
+				Point newpoint = new CalcVector(wall_point.getX(), wall_point.getY(), perpendicular.getDX(),
+						perpendicular.getDY()).getScaledVector(0.5).destination();
+
+				CalcVector perpendicular_left = new CalcVector(colliderV.origin(), perpendicular.getDX(),
+						perpendicular.getDY());
+				CalcVector perpendicular_right = new CalcVector(colliderV.destination(), perpendicular.getDX(),
+						perpendicular.getDY());
+
+				
+				drawVector(g, perpendicular_left, Color.RED);
+				drawVector(g, perpendicular_right, Color.RED);
+				
+
+				CalcVector left_v = new CalcVector(perpendicular_left.destination(), wall_point);
+				CalcVector right_v = new CalcVector(perpendicular_right.destination(), wall_point);
+
+				drawVector(g, left_v, Color.BLUE);
+				drawVector(g, right_v, Color.BLUE);
+
+				CalcVector parallel_left = left_v
+						.subtract(new CalcVector(0, 0, -perpendicular_left.getDX(), -perpendicular_left.getDY()));
+				CalcVector parallel_right = right_v
+						.subtract(new CalcVector(0, 0, -perpendicular_right.getDX(), -perpendicular_right.getDY()));
+
+				drawVector(g, parallel_left, Color.GREEN);
+				drawVector(g, parallel_right, Color.ORANGE);
+
+				Point corner_point = null;
+				if(wall_point.equals(colliderV.origin()))
+					corner_point = colliderV.origin();
+				else if(wall_point.equals(colliderV.destination()))
+					corner_point = colliderV.destination();
+
+				
+
+				// CalcVector loc_l = parallel_left.localize(perpendicular);
+				// CalcVector loc_r = parallel_right.localize(perpendicular);
+
+				
+				// //drawVector(g, parallel_right, Color.GREEN);
+				// System.out.println("left=" + loc_l.getDX() + " right=" + loc_r.getDX());
+				if (corner_point != null) {
+					CalcVector cvec = new CalcVector(corner_point, schemPt);
+					cvec = cvec.setMagnitude(r*1.2);
+					
+					//cvec = cvec.normalize(r);
+					drawVector(g, cvec, Color.GREEN);
+					setPlayerPosFromSchem(cvec.destination());
+					System.out.println("x");
+				}else
+				if (colliding) {
+					
+					setPlayerPosFromSchem(newpoint);
+				}
+			}
+		//}
+		location = location.shift(component_x, -component_y);
+
 
 		for (int i = 0; i < bullets.size(); i++) {
 			Bullet b = bullets.get(i);
 			b.moveBullet();
 		}
-		location = location.shift(component_x, -component_y);
+		
+	}
+
+	private void drawVector(Graphics2D g, CalcVector perpendicular_left, Color red) {
+		g.setStroke(new BasicStroke(2));
+		g.setColor(red);
+		Line g_line = SchemUtilities.schemToFrame(new Line(perpendicular_left.origin(), perpendicular_left.destination()), location, Globals.PIXELS_PER_GRID());
+		g.drawLine((int) g_line.getX1(), (int) g_line.getY1(), (int) g_line.getX2(), (int) g_line.getY2());
+		
+		Point dst = perpendicular_left.destination();
+		
+		double dangle = 5*Math.PI/6;
+		CalcVector left = CalcVector.fromAngleMag(dst, 0.2, perpendicular_left.getAngle() + dangle);
+		CalcVector right = CalcVector.fromAngleMag(dst, 0.2, perpendicular_left.getAngle() - dangle);
+
+		Line l_line = SchemUtilities.schemToFrame(new Line(left.origin(), left.destination()), location,
+				Globals.PIXELS_PER_GRID());
+		Line r_line = SchemUtilities.schemToFrame(new Line(right.origin(), right.destination()), location,
+				Globals.PIXELS_PER_GRID());
+			
+		g.drawLine((int) l_line.getX1(), (int) l_line.getY1(), (int) l_line.getX2(), (int) l_line.getY2());
+		g.drawLine((int) r_line.getX1(), (int) r_line.getY1(), (int) r_line.getX2(), (int) r_line.getY2());
 	}
 
 	/*
@@ -1043,9 +1176,8 @@ public class Application extends JPanel {
 	 * Move player given a SCHEMATIC coordinate
 	 */
 	void setPlayerPosFromSchem(Point p) {
-		location = new Point(p.getX() * Globals.PIXELS_PER_GRID() - PLAYER_SCREEN_LOC.left(),
-				p.getY() * Globals.PIXELS_PER_GRID() - PLAYER_SCREEN_LOC.top() - PLAYER_SCREEN_LOC.getHeight() / 2
-						- 1.5 * Globals.PIXELS_PER_GRID());
+		location = new Point(p.getX() * Globals.PIXELS_PER_GRID() - player_screen_pos.getX(),
+				p.getY() * Globals.PIXELS_PER_GRID() - player_screen_pos.getY());
 	}
 
 	/*
@@ -1066,7 +1198,7 @@ public class Application extends JPanel {
 	}
 
 	IntPoint playerSchemRoundedPos() {
-		return SchemUtilities.frameToSchemInt(new Point((PLAYER_SCREEN_LOC.left()),(PLAYER_SCREEN_LOC.top())), location, Globals.PIXELS_PER_GRID());
+		return SchemUtilities.frameToSchemInt(new Point((player_screen_pos.getX()),(player_screen_pos.getY())), location, Globals.PIXELS_PER_GRID());
 	}
 
 	void paintColorRect(Graphics g, ColorRect rect, double depth) {

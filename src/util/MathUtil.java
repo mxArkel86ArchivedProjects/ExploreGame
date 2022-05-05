@@ -8,7 +8,7 @@ import templates.Size;
 
 public class MathUtil {
 	public static double dotProduct(CalcVector v1, CalcVector v2) {
-		return v1.getX() * v2.getX() + v1.getY() * v2.getY();
+		return v1.getDX() * v2.getDX() + v1.getDY() * v2.getDY();
 	}
 
 	public static double crossProduct(CalcVector v1, CalcVector v2) {
@@ -22,6 +22,11 @@ public class MathUtil {
 
 	public static CalcVector perpendicularProjection(CalcVector U, CalcVector V) {
 		return U.subtract(parallelProjection(U, V));
+	}
+
+	public static double round(double value, int places) {
+		double factor = Math.pow(10, places);
+		return Math.round(value * factor) / factor;
 	}
 
 	public static double getAngle(CalcVector v1, CalcVector v2) {

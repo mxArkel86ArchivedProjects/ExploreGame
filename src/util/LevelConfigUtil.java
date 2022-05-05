@@ -82,12 +82,7 @@ public class LevelConfigUtil {
                    double x2 = Double.parseDouble(args[2]);
                    double y2 = Double.parseDouble(args[3]);
 
-                   double x_1 = Math.min(x1, x2);
-                   double y_1 = Math.min(y1, y2);
-                   double x_2 = Math.max(x1, x2);
-                   double y_2 = Math.max(y1, y2);
-                    
-                   Collider c = new Collider(x_1, y_1, x_2, y_2);
+                   Collider c = new Collider(x1, y1, x2, y2);
                    entry.app.colliders.add(c);
                 // }else if(category.contentEquals("colorrect")){
                 //     String color = args[0];

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import gameObjects.Collider;
+import main.Globals;
 import templates.CollisionProps;
 import templates.Line;
 import templates.Point;
@@ -11,12 +12,46 @@ import templates.Rect;
 
 public class CollisionUtil {
 
-	public static boolean playerCollisionWithColliders(Rect player_pos_on_screen, double dx, double dy, Point location,
-			double GRIDSIZE, List<Collider> colliders) {
-		Point schemPt = SchemUtilities.frameToSchem(player_pos_on_screen.center(), location, GRIDSIZE);
+	public static boolean LineSphereCollision(Line line, Point sphereCenter, double sphereRadius) {
+		Point closestPoint = ClosestPointOnLine(line, sphereCenter);
+		double distance = closestPoint.distance(sphereCenter);
+		return distance <= sphereRadius;
+	}
 
-		//return collides;
-		return true;
+	public static Point ClosestPointOnLine(Line line, Point sphereCenter) {
+		double x1 = line.getX1();
+		double y1 = line.getY1();
+		double x2 = line.getX2();
+		double y2 = line.getY2();
+		double x3 = sphereCenter.getX();
+		double y3 = sphereCenter.getY();
+		double x4 = x2 - x1;
+		double y4 = y2 - y1;
+		double t = ((x3 - x1) * x4 + (y3 - y1) * y4) / (x4 * x4 + y4 * y4);
+		if (t < 0) {
+			t = 0;
+		} else if (t > 1) {
+			t = 1;
+		}
+		double closestX = x1 + t * x4;
+		double closestY = y1 + t * y4;
+		return new Point(closestX, closestY);
+	}
+
+	public static List<Integer> playerCollisionWithColliders(Point pos, double r, List<Collider> colliders) {
+		// Point nextPt = new Point(schemPt.getX() + dx + player_pos_on_screen.getWidth() / 2,
+		// 		schemPt.getY() + dy + player_pos_on_screen.getHeight() / 2);
+		// Line line = new Line(schemPt, nextPt);
+
+		List<Integer> indeces = new ArrayList<Integer>();
+		for (int i = 0;i<colliders.size();i++) {
+			Collider c = colliders.get(i);
+			boolean collision = LineSphereCollision(c, pos,
+					r);
+			if(collision)
+				indeces.add(i);
+		}
+		return indeces;
 	}
 
 	public static List<Collider> subdivideCollider(Collider c) {

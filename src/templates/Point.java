@@ -19,6 +19,10 @@ public class Point {
 		return y;
 	}
 
+	public Point scale(double scale) {
+		return new Point(x * scale, y * scale);
+	}
+
 	public void setX(double x) {
 		this.x = x;
 	}
