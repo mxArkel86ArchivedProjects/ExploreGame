@@ -3,15 +3,54 @@ package util;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.javatuples.Pair;
+
 import gameObjects.Collider;
 import main.Globals;
+import templates.CalcVector;
 import templates.CollisionProps;
+import templates.DirectionVector;
 import templates.Line;
 import templates.Point;
 import templates.Rect;
 
 public class CollisionUtil {
 
+	public static Pair<Point,Point> sphereCollision(Point p1, double r1, Point p2, double r2, DirectionVector d1,
+			DirectionVector d2) {
+		double distReq = r1 + r2;
+		Point pos1 = p1;
+		Point pos2 = p1.shift(d1.getDX(), d1.getDY());
+		Line l1 = new Line(pos1, pos2);
+		
+		Point pos3 = p2;
+		Point pos4 = p2.shift(d2.getDX(), d2.getDY());
+		Line l2 = new Line(pos3, pos4);
+
+		Point pout1 = MathUtil.ClosestPointOnLine(l2, pos1);
+		if (pos1.distance(pout1) < distReq) {
+			return Pair.with(pos1, pout1);
+		}
+		Point out2 = MathUtil.ClosestPointOnLine(l2, pos2);
+		if (pos2.distance(out2) < distReq)
+		{
+			return Pair.with(pos2, out2);
+		}
+		Point pout3 = MathUtil.ClosestPointOnLine(l1, pos3);
+		if (pos3.distance(pout3) < distReq)
+		{
+			return Pair.with(pos3, pout3);
+		}
+		Point pout4 = MathUtil.ClosestPointOnLine(l1, pos4);
+		if (pos4.distance(pout4) < distReq)
+		{
+			return Pair.with(pos4, pout4);
+		}
+		return null;
+	}
+
+
+	
 	public static boolean LineSphereCollision(Line line, Point sphereCenter, double sphereRadius) {
 		Point closestPoint = MathUtil.ClosestPointOnLine(line, sphereCenter);
 		double distance = closestPoint.distance(sphereCenter);
@@ -109,9 +148,15 @@ public class CollisionUtil {
 		return collide_x || collide_y;
 	}
 
-	// public static CollisionReturn SchemDynamicCollision(Rect a, Rect b, double dx, double dy) {
-	// 	return CollisionRaw(a, b, dx, dy);
-	// }
+
+
+    public static boolean sphereCollision(Point p1, double r1, Point p2, double r2) {
+		double dist = p1.distance(p2);
+		if (dist < r1 + r2) {
+			return true;
+		}
+		return false;
+    }
 
 	// private static CollisionReturn CollisionRaw(Rect a, Rect b, double dx, double dy){
 	// 	CollisionReturn ret = new CollisionReturn();

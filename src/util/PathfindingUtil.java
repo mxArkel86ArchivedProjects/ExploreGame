@@ -21,7 +21,17 @@ import templates.PathNode;
 import templates.Point;
 
 public class PathfindingUtil {
-    public static List<Point> PathFindByWalls(PathNode start, PathNode end, int MAX_TRAVEL_DIST, List<Collider> allWallsRaw) {
+    public static List<Point> directPath(PathNode start, PathNode end, List<Collider> allWallsRaw) {
+        List<Collider> allWalls = allWallsRaw.stream().map(c -> CollisionUtil.subdivideCollider(c)).flatMap(List::stream)
+                .map(x -> new Collider(x.shift(-0.5, -0.5))).collect(Collectors.toList());
+            
+        if (CollisionUtil.LineIntersectsWithColliders(new Line(start.getPoint().DPoint(), end.getPoint().DPoint()), allWalls)) {
+            return null;
+        }
+        return Arrays.asList(start.getPoint().DPoint(), end.getPoint().DPoint());
+    }
+
+    public static List<Point> PathFindByWalls(PathNode start, PathNode end, int MAX_TRAVEL_DIST, int MAX_LEVELS, List<Collider> allWallsRaw) {
 
         List<Collider> allWalls = allWallsRaw.stream().map(c -> CollisionUtil.subdivideCollider(c)).flatMap(List::stream)
                 .map(x->new Collider(x.shift(-0.5, -0.5))).collect(Collectors.toList());
@@ -31,7 +41,13 @@ public class PathfindingUtil {
         List<PathNode> add_node = new ArrayList<>();
         queue.add(start);
 
+        int level = 0;
+
         while (!queue.isEmpty()) {
+            if(level > MAX_LEVELS) {
+                return null;
+            }
+            level++;
             while (!queue.isEmpty()) {
                 PathNode current = queue.poll();
 

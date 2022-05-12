@@ -353,11 +353,11 @@ public class ShaderUtil {
     	dispG.setPaint(null);
     
     	for (LevelWall wall : entry.app.walls) {
-    		if (entry.app.inScreenSpace(wall) && wall.getAsset().equals("wood")) {
+    		if (wall.getAsset().equals("wood")) {
                 Rect r = SchemUtilities.schemToFrame(wall, location, Globals.PIXELS_PER_GRID());
                 
-                if(!entry.app.inScreenSpace(r))
-                    continue;
+                // if(!entry.app.inScreenSpace(r))
+                //     continue;
     			Point obj = r.center();
     
     			Ellipse2D e2d2 = new Ellipse2D.Double(obj.getX() - Globals.LAMP_RADIUS, obj.getY() - Globals.LAMP_RADIUS,

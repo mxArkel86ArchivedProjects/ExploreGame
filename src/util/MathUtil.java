@@ -171,5 +171,26 @@ public class MathUtil {
 		double closestY = y1 + t * y4;
 		return new Point(closestX, closestY);
 	}
-    
+
+	public static Line extendLine(Line line, double d) {
+		//extend both sides of the line into length d
+		Point center = line.center();
+		double length = line.length();
+		double scale = d / length / 4;
+		double angle1 = Math.atan2(line.center().getY() - line.getY1(), line.center().getX() - line.getX1());
+
+		Point p1 = new Point(center.getX() + scale * Math.cos(angle1), center.getY() + scale * Math.sin(angle1));
+		Point p2 = new Point(center.getX() - scale * Math.cos(angle1), center.getY() - scale * Math.sin(angle1));
+		return new Line(p2, p1);
+	}
+
+	public static Line extendLineFromFirstPoint(Line line, double d) {
+		//extend both sides of the line into length d
+		Point first = line.getP1();
+		double length = line.length();
+		double angle1 = line.angle();
+
+		Point last = new Point(first.getX() + d * Math.cos(angle1), first.getY() + d * Math.sin(angle1));
+		return new Line(first, last);
+	}
 }

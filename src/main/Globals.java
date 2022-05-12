@@ -35,11 +35,10 @@ public class Globals {
 	public static final double DASH_PERCENT_FALLOFF_SPEED = 0.04;
 	public static final int DASH_DELAY = 100;
 	public static final int ASSET_MENU_HORIZONTAL = 10;
-	public static final double BULLET_SPEED_MULT = 0.02;
-	public static final double BULLET_SIZE_MULT = 1;
+	public static final double BULLET_SPEED = 0.4;
 	// LIGHTING
 	public static final double FLASHLIGHT_FOV = 0.7;
-	public static final int INNER_RADIUS = 200;
+	public static final int INNER_RADIUS = 250;
 	public static final int FLASHLIGHT_RANGE = 540;
 	public static final int OVERLAY_MARKER_SIZE = 10;
 	public static final int LAMP_RADIUS = 180;

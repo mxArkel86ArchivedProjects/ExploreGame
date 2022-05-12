@@ -1,34 +1,39 @@
 package gameObjects;
 
 import main.Globals;
+import templates.DirectionVector;
 import templates.Point;
 import templates.Rect;
 
 public class Bullet {
     public double angle;
     public double speed;
-    private double size;
-    private Point topleft;
+    private double radius;
+    private Point center;
 
-    public Bullet(double x, double y, double size, double angle, double speed) {
+    public DirectionVector getDirectionVector() {
+        return new DirectionVector(speed, angle);
+    }
+
+    public Bullet(double x, double y, double radius, double angle, double speed) {
         this.angle = angle;
         this.speed = speed;
-        this.size = size;
-        this.topleft = new Point(x, y);
+        this.radius = radius;
+        this.center = new Point(x, y);
     }
     
     public void moveBullet() {
         double dx = speed * Math.cos(angle);
         double dy = speed * Math.sin(angle);
-        topleft = topleft.shift(dx, dy);
+        center = center.shift(dx, dy);
     }
 
-    public double getSize() {
-        return size;
+    public double getRadius() {
+        return radius;
     }
     
     public Point getPos() {
-        return topleft;
+        return center;
     }
     
 }
