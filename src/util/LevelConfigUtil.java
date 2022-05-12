@@ -57,7 +57,7 @@ public class LevelConfigUtil {
         BufferedReader reader;
         String category = "";
 		try {
-			reader = new BufferedReader(new FileReader("level.txt"));
+			reader = new BufferedReader(new FileReader("level3.txt"));
 			String line = reader.readLine();
             
             while (line != null) {

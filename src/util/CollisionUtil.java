@@ -13,29 +13,9 @@ import templates.Rect;
 public class CollisionUtil {
 
 	public static boolean LineSphereCollision(Line line, Point sphereCenter, double sphereRadius) {
-		Point closestPoint = ClosestPointOnLine(line, sphereCenter);
+		Point closestPoint = MathUtil.ClosestPointOnLine(line, sphereCenter);
 		double distance = closestPoint.distance(sphereCenter);
 		return distance <= sphereRadius;
-	}
-
-	public static Point ClosestPointOnLine(Line line, Point sphereCenter) {
-		double x1 = line.getX1();
-		double y1 = line.getY1();
-		double x2 = line.getX2();
-		double y2 = line.getY2();
-		double x3 = sphereCenter.getX();
-		double y3 = sphereCenter.getY();
-		double x4 = x2 - x1;
-		double y4 = y2 - y1;
-		double t = ((x3 - x1) * x4 + (y3 - y1) * y4) / (x4 * x4 + y4 * y4);
-		if (t < 0) {
-			t = 0;
-		} else if (t > 1) {
-			t = 1;
-		}
-		double closestX = x1 + t * x4;
-		double closestY = y1 + t * y4;
-		return new Point(closestX, closestY);
 	}
 
 	public static List<Integer> playerCollisionWithColliders(Point pos, double r, List<Collider> colliders) {

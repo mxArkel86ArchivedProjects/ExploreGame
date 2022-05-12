@@ -2,36 +2,32 @@ package templates;
 
 import util.MathUtil;
 
-public class CalcVector {
+public class CalcVector extends DirectionVector {
     double x;
     double y;
-    double dx;
-    double dy;
     
-    public CalcVector(double x, double y, double dx, double dy) {
+    public CalcVector(double x, double y, double magnitude, double angle) {
+        super(magnitude, angle);
         this.x = x;
         this.y = y;
-        this.dx = dx;
-        this.dy = dy;
     }
 
-    public CalcVector(Point p, double dx, double dy) {
-        this.x = p.getX();
-        this.y = p.getY();
-        this.dx = dx;
-        this.dy = dy;
-    }
-
-    public static CalcVector fromAngleMag(Point start, double mag, double angle) {
-        CalcVector cvec = new CalcVector(start.getX(), start.getY(), mag * Math.cos(angle), mag * Math.sin(angle));
-        return cvec;
-    }
-
-    public CalcVector(Point p1, Point p2) {
+    public CalcVector(Point p1, DirectionVector v) {
+        super(v.getMagnitude(), v.getAngle());
         this.x = p1.getX();
         this.y = p1.getY();
-        this.dx = p2.getX() - p1.getX();
-        this.dy = p2.getY() - p1.getY();
+    }
+
+    public static CalcVector fromPoints(Point p1, Point p2) {
+        return new CalcVector(p1.getX(), p1.getY(), Math.sqrt(Math.pow(p2.getX() - p1.getX(), 2) + Math.pow(p2.getY() - p1.getY(), 2)), Math.atan2(p2.getY() - p1.getY(), p2.getX() - p1.getX()));
+    }
+
+    public CalcVector scale(double s) {
+        return new CalcVector(this.x, this.y, this.magnitude * s, this.angle);
+    }
+
+    public CalcVector scale(double s, double t) {
+        return new CalcVector(new Point(x, y), super.scale(s, t));
     }
 
     public double getX() {
@@ -43,11 +39,11 @@ public class CalcVector {
     }
 
     public double getDX() {
-        return dx;
+        return magnitude*Math.cos(angle);
     }
 
     public double getDY() {
-        return dy;
+        return magnitude*Math.sin(angle);
     }
 
     public Point origin() {
@@ -55,52 +51,34 @@ public class CalcVector {
     }
 
     public Point destination() {
-        return new Point(x + dx, y + dy);
+        return new Point(x + getDX(), y + getDY());
     }
 
     public double getMagnitude() {
-        return Math.sqrt(dx * dx + dy * dy);
+        return Math.sqrt(getDX() * getDX() + getDY() * getDY());
+    }
+    
+    public CalcVector withMagnitude(double magnitude) {
+        return new CalcVector(x, y, magnitude, angle);
     }
 
-    public CalcVector setMagnitude(double mult) {
-        double mag = getMagnitude();
-        return new CalcVector(x, y, dx * mult / mag, dy * mult / mag);
-    }
-
-    public double getAngle() {
-        return Math.atan2(dy, dx);
-    }
-
-    public CalcVector getUnitVector() {
-        double magnitude = getMagnitude();
-        return new CalcVector(0,0,dx / magnitude, dy / magnitude);
-    }
-
-    public CalcVector getScaledVector(double scale) {
-        return new CalcVector(x, y, dx * scale, dy * scale);
+    public DirectionVector getDirectionVector() {
+        return this;
     }
 
     public CalcVector invert() {
-        return new CalcVector(destination(), origin());
+        return CalcVector.fromPoints(destination(), origin());
     }
 
-    public CalcVector localize(CalcVector c) {
-        double angle = c.getAngle()-this.getAngle();
-        double mag = this.getMagnitude();
-        double x_ = mag * Math.cos(angle);
-        double y_ = mag * Math.sin(angle);
-        return new CalcVector(this.origin(), x_, y_);
+    public CalcVector addAll(CalcVector other) {
+        return new CalcVector(x+other.getX(), y + other.getY(), getDX() + other.getDX(), getDY() + other.getDY());
     }
 
-    public CalcVector getScaledVector(double sx, double sy) {
-        return new CalcVector(x, y, dx * sx, dy * sy);
+    public CalcVector subtractAll(CalcVector other) {
+        return new CalcVector(x - other.getX(), y - other.getY(), getDX() - other.getDX(), getDY() - other.getDY());
     }
 
-    public CalcVector add(CalcVector other) {
-        return new CalcVector(x+other.getX(), y + other.getY(), dx + other.getDX(), dy + other.getDY());
-    }
-
-    public CalcVector subtract(CalcVector other) {
-        return new CalcVector(x - other.getX(), y - other.getY(), dx - other.getDX(), dy - other.getDY());
+    public Point PointOnLine(double percent) {
+        return new Point(origin().getX()*(1-percent)+destination().getX()*percent, origin().getY()*(1-percent)+destination().getY()*percent);
     }
 }

@@ -29,6 +29,17 @@ public class Line {
         return p2;
     }
 
+    public Line constrict(double percent) {
+        Point p1_ = new Point(p1.getX() * (1 - percent) + p2.getX() * percent,
+                p1.getY() * (1 - percent) + p2.getY() * percent);
+        
+        Point p2_ = new Point(p2.getX() * (1 - percent) + p1.getX() * percent,
+                p2.getY() * (1 - percent) + p1.getY() * percent);
+        
+        Line l = new Line(p1_, p2_);
+        return l; 
+    }
+
     public double getX1() {
         return p1.getX();
     }

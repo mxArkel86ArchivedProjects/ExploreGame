@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 
 import javax.swing.JPanel;
 
+import org.javatuples.Pair;
 import org.javatuples.Triplet;
 
 import gameObjects.Bullet;
@@ -47,7 +48,7 @@ import templates.IntPoint;
 import templates.Line;
 import templates.PathNode;
 import templates.Point;
-import templates.PolarLine;
+import templates.DirectionVector;
 import templates.Rect;
 import templates.Size;
 import util.CollisionUtil;
@@ -95,10 +96,10 @@ public class Application extends JPanel {
 	public double looking_angle = 0;
 	Weapon weapon = null;
 	long last_fire_tick = 0;
-	PolarLine velocity = new PolarLine(0, 0);
-	PolarLine intent = new PolarLine(1, 0);
+	DirectionVector velocity = new DirectionVector(0, 0);
+	DirectionVector intent = new DirectionVector(1, 0);
 
-	Enemy enemy = new Enemy(38,45,40);
+	Enemy enemy = new Enemy(38, 45, 40);
 
 	/*
 	 * SELECTOR VARIABLES
@@ -128,6 +129,7 @@ public class Application extends JPanel {
 	boolean SHADOWS_MODE = false;
 	boolean SHOW_ASSETS_MENU = false;
 	boolean FLASHLIGHT_ENABLED = false;
+	boolean ENEMY_FOLLOW = false;
 
 	GraphicsConfiguration gconfig = null;
 
@@ -144,11 +146,9 @@ public class Application extends JPanel {
 
 	boolean colliding = false;
 
-	CalcVector PMV;
-
-	Point wall_point;
-
 	CalcVector perpendicular;
+
+	long enemy_tick = 0;
 
 	/*
 	 * INIT METHOD
@@ -258,6 +258,11 @@ public class Application extends JPanel {
 		}, () -> {
 			return String.valueOf(CLIP_MODE);
 		}));
+		debug_opts.add(new Triplet<String, Runnable, Callable<String>>("Enemy Follow [%s]", () -> {
+			ENEMY_FOLLOW = !ENEMY_FOLLOW;
+		}, () -> {
+			return String.valueOf(ENEMY_FOLLOW);
+		}));
 		debug_opts.add(new Triplet<String, Runnable, Callable<String>>("Toggle Flashlight [%s]", () -> {
 			FLASHLIGHT_ENABLED = !FLASHLIGHT_ENABLED;
 		}, () -> {
@@ -269,7 +274,6 @@ public class Application extends JPanel {
 		}, () -> {
 			return "";
 		}));
-
 
 		subdivided_colliders = colliders.stream().map(c -> CollisionUtil.subdivideCollider(c)).flatMap(List::stream)
 				.collect(Collectors.toList());
@@ -290,17 +294,23 @@ public class Application extends JPanel {
 			return;
 		}
 
-		Graphics2D g2 = (Graphics2D)debug_tick.getGraphics();
+		Graphics2D g2 = (Graphics2D) debug_tick.getGraphics();
 		g2.setBackground(new Color(0, 0, 0, 0));
 		g2.clearRect(0, 0, overlay.getWidth(), overlay.getHeight());
 
-		enemy.step();
-
-		// if (entry.tick>reassign_tick+5000) {
-			
-		// 	reassign_tick = entry.tick;
+		// if (ENEMY_FOLLOW && entry.tick > enemy_tick + 1000) {
+		// IntPoint end = playerSchemRoundedPos();
+		// IntPoint start = new IntPoint((int)Math.round(enemy.getPos().getX()),
+		// (int)Math.round(enemy.getPos().getY()));
+		// enemy.updatePath(start, end, location, Globals.PIXELS_PER_GRID());
+		// enemy_tick = entry.tick;
 		// }
-		
+
+		enemy.step();
+		// if (entry.tick>reassign_tick+5000) {
+
+		// reassign_tick = entry.tick;
+		// }
 
 		/*
 		 * if (animation) {
@@ -327,7 +337,7 @@ public class Application extends JPanel {
 		 * }
 		 * } else
 		 */
-		playerCollisionAndMovementCode((Graphics2D)debug_tick.getGraphics());
+		playerCollisionAndMovementCode((Graphics2D) debug_tick.getGraphics());
 
 		/*
 		 * for (ResetBox b : resetboxes) {
@@ -360,7 +370,8 @@ public class Application extends JPanel {
 		}
 
 		g.setColor(Color.YELLOW);
-		g.fillOval((int) (player_screen_pos.getX()-Globals.PLAYER_SIZE/2), (int) (player_screen_pos.getY()-Globals.PLAYER_SIZE/2), (int) Globals.PLAYER_SIZE,
+		g.fillOval((int) (player_screen_pos.getX() - Globals.PLAYER_SIZE / 2),
+				(int) (player_screen_pos.getY() - Globals.PLAYER_SIZE / 2), (int) Globals.PLAYER_SIZE,
 				(int) Globals.PLAYER_SIZE);
 
 		g.setColor(Color.YELLOW);
@@ -371,21 +382,20 @@ public class Application extends JPanel {
 
 		g.setColor(Color.GREEN);
 		for (Bullet b : bullets) {
-			Rect r = SchemUtilities.schemToFrame(new Rect(b.getPos(), new Size(b.getSize(), b.getSize())), location, Globals.PIXELS_PER_GRID());
+			Rect r = SchemUtilities.schemToFrame(new Rect(b.getPos(), new Size(b.getSize(), b.getSize())), location,
+					Globals.PIXELS_PER_GRID());
 			if (inScreenSpace(r))
 				g.drawRect((int) r.left(), (int) r.top(), (int) r.getWidth(), (int) r.getHeight());
 		}
 	}
-	
+
 	void drawUI(Graphics2D g) {
 		for (ResetBox b : resetboxes) {
 			Rect r = SchemUtilities.schemToFrame(b, location, Globals.PIXELS_PER_GRID());
-			//if (inScreenSpace(r))
-				g.drawRect((int) Math.floor(r.left()), (int) Math.floor(r.top()), (int) Math.floor(r.getWidth()),
-						(int) Math.floor(r.getHeight()));
+			// if (inScreenSpace(r))
+			g.drawRect((int) Math.floor(r.left()), (int) Math.floor(r.top()), (int) Math.floor(r.getWidth()),
+					(int) Math.floor(r.getHeight()));
 		}
-
-		
 
 		g.setColor(Color.RED);
 		g.setStroke(new BasicStroke(4));
@@ -426,8 +436,10 @@ public class Application extends JPanel {
 		String focus = selectasset;
 
 		g.drawString(String.format(
-				"raw=(%5.1f,%5.1f)  coord=(%5.1f,%5.1f) typing=%b focus=[%s] select_type=%d debug_val=[%s] colliding=%b tick=%d", mouse.getX(),
-				mouse.getY(), schem_mouse.getX(), schem_mouse.getY(), typing, focus, selection_type, debug_vals.toString(), colliding, entry.tick), 20,
+				"raw=(%5.1f,%5.1f)  coord=(%5.1f,%5.1f) typing=%b focus=[%s] select_type=%d debug_val=[%s] colliding=%b tick=%d",
+				mouse.getX(),
+				mouse.getY(), schem_mouse.getX(), schem_mouse.getY(), typing, focus, selection_type,
+				debug_vals.toString(), colliding, entry.tick), 20,
 				g.getFontMetrics().getAscent() + 20);
 
 		if (EDIT_MODE) {
@@ -502,40 +514,42 @@ public class Application extends JPanel {
 		g.setColor(Color.BLUE);
 		g.setStroke(new BasicStroke(4));
 
-			for (LevelTile o : newTiles) {
+		for (LevelTile o : newTiles) {
 
-				Rect r = SchemUtilities.schemToFrame(o, location, Globals.PIXELS_PER_GRID());
-				if (inScreenSpace(r))
-					paintLevelTile(g, (LevelTile) o);
+			Rect r = SchemUtilities.schemToFrame(o, location, Globals.PIXELS_PER_GRID());
+			if (inScreenSpace(r))
+				paintLevelTile(g, (LevelTile) o);
 
-			}
-			for (LevelWall o : newWalls) {
-				Rect r = SchemUtilities.schemToFrame(o, location,
-						Globals.PIXELS_PER_GRID());
-				if (inScreenSpace(r))
-					paintLevelWall(g, (LevelWall) o);
-			}
+		}
+		for (LevelWall o : newWalls) {
+			Rect r = SchemUtilities.schemToFrame(o, location,
+					Globals.PIXELS_PER_GRID());
+			if (inScreenSpace(r))
+				paintLevelWall(g, (LevelWall) o);
+		}
 
-			for (Collider o : colliders) {
-				Line r = SchemUtilities.schemToFrame(o, location, Globals.PIXELS_PER_GRID());
-				if (inScreenSpace(r))
-					g.drawLine((int) r.getX1(), (int) r.getY1(), (int) r.getX2(), (int) r.getY2());
-			}
+		for (Collider s : subdivided_colliders) {
+			Line o = s.constrict(0.1);
+			Line r = SchemUtilities.schemToFrame(o, location, Globals.PIXELS_PER_GRID());
+			if (inScreenSpace(r))
+				g.drawLine((int) r.getX1(), (int) r.getY1(), (int) r.getX2(), (int) r.getY2());
+		}
 
-			g.setColor(Color.ORANGE);
-			for (Collider o : newColliders) {
-				Line l = SchemUtilities.schemToFrame(o, location, Globals.PIXELS_PER_GRID());
+		g.setColor(Color.ORANGE);
+		for (Collider o : newColliders) {
+			Line l = SchemUtilities.schemToFrame(o, location, Globals.PIXELS_PER_GRID());
 
-				if (inScreenSpace(l))
-					g.drawLine((int) l.getX1(), (int) l.getY1(), (int) l.getX2(), (int) l.getY2());
-			}
+			if (inScreenSpace(l))
+				g.drawLine((int) l.getX1(), (int) l.getY1(), (int) l.getX2(), (int) l.getY2());
+		}
 
 		if (enemy.getPath() != null) {
 			List<Point> points = enemy.getPath();
 			final int psize = 3;
-			
+
 			for (Point point : points) {
-				Point p2 = SchemUtilities.schemToFrame(new Point(point.getX() + point_offset, point.getY() + point_offset), location,
+				Point p2 = SchemUtilities.schemToFrame(
+						new Point(point.getX() + point_offset, point.getY() + point_offset), location,
 						Globals.PIXELS_PER_GRID());
 				g.drawOval((int) p2.getX() - psize, (int) p2.getY() - psize, psize * 2, psize * 2);
 			}
@@ -544,9 +558,11 @@ public class Application extends JPanel {
 				Point current = points.get(i);
 				Point next = points.get(i + 1);
 
-				Point p1 = SchemUtilities.schemToFrame(new Point(current.getX() + point_offset, current.getY() + point_offset), location,
+				Point p1 = SchemUtilities.schemToFrame(
+						new Point(current.getX() + point_offset, current.getY() + point_offset), location,
 						Globals.PIXELS_PER_GRID());
-				Point p2 = SchemUtilities.schemToFrame(new Point(next.getX() + point_offset, next.getY() + point_offset), location,
+				Point p2 = SchemUtilities.schemToFrame(
+						new Point(next.getX() + point_offset, next.getY() + point_offset), location,
 						Globals.PIXELS_PER_GRID());
 				g.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY());
 			}
@@ -561,55 +577,47 @@ public class Application extends JPanel {
 			}
 		}
 
-		List<Collider> closeColliders = subdivided_colliders.stream().filter(c -> c.center().distance(playerSchemRoundedPos().DPoint()) < 2)
+		List<Collider> closeColliders = subdivided_colliders.stream()
+				.filter(c -> c.center().distance(playerSchemRoundedPos().DPoint()) < 2)
 				.collect(Collectors.toList());
 
-		g.setColor(Color.BLUE);
-		for (Point p3 : PathfindingUtil.getCorners(closeColliders)) {
-			Point p4 = SchemUtilities.schemToFrame(p3.shift(-point_offset, -point_offset), location, Globals.PIXELS_PER_GRID());
-			g.fillOval((int) p4.getX() - z2, (int) p4.getY() - z2, z2 * 2, z2 * 2);
-		}
-		//lines
+		// g.setColor(Color.BLUE);
+		// for (Point p3 : PathfindingUtil.getCorners(closeColliders)) {
+		// Point p4 = SchemUtilities.schemToFrame(p3.shift(-point_offset,
+		// -point_offset), location, Globals.PIXELS_PER_GRID());
+		// g.fillOval((int) p4.getX() - z2, (int) p4.getY() - z2, z2 * 2, z2 * 2);
+		// }
+		// //lines
 
 		g.setStroke(new BasicStroke(3));
 		g.setColor(Color.RED);
 		for (Line l2 : PathfindingUtil.getCornerLines(closeColliders)) {
-			Point p1 = SchemUtilities.schemToFrame(l2.getP1().shift(-point_offset, -point_offset), location, Globals.PIXELS_PER_GRID());
-			Point p2 = SchemUtilities.schemToFrame(l2.getP2().shift(-point_offset, -point_offset), location, Globals.PIXELS_PER_GRID());
+			Point p1 = SchemUtilities.schemToFrame(l2.getP1().shift(-point_offset, -point_offset), location,
+					Globals.PIXELS_PER_GRID());
+			Point p2 = SchemUtilities.schemToFrame(l2.getP2().shift(-point_offset, -point_offset), location,
+					Globals.PIXELS_PER_GRID());
 			g.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY());
 		}
 
 		if (layers != null) {
-			PathfindingUtil.displayPath(g, layers, location, (double)Globals.PIXELS_PER_GRID(), Enemy.check);
+			PathfindingUtil.displayPath(g, layers, location, (double) Globals.PIXELS_PER_GRID(), Enemy.check);
 		}
 
-		
 		g.fillRect((int) player_screen_pos.getX() - z2, (int) player_screen_pos.getY() - z2, 2 * z2, 2 * z2);
 		g.setColor(Color.RED);
 		Point enemyP = SchemUtilities.schemToFrame(new Point(enemy.getPos().getX(), enemy.getPos().getY()), location,
 				Globals.PIXELS_PER_GRID());
 		g.fillOval((int) enemyP.getX() - 2, (int) enemyP.getY() - 2, 4, 4);
 
-		Line screen = SchemUtilities.schemToFrame(
-				new Line(PMV.getX(), PMV.getY(), PMV.getX() + PMV.getDX(), PMV.getY() + PMV.getDY()), location,
-				Globals.PIXELS_PER_GRID());
+		// Line screen = SchemUtilities.schemToFrame(
+		// new Line(PMV.getX(), PMV.getY(), PMV.getX() + PMV.getDX(), PMV.getY() +
+		// PMV.getDY()), location,
+		// Globals.PIXELS_PER_GRID());
 
-		g.setStroke(new BasicStroke(4));
-		g.setColor(Color.BLUE);
-		g.drawLine((int) screen.getX1(), (int) screen.getY1(), (int) screen.getX2(), (int) screen.getY2());
-
-		if(wall_point!=null)
-		{
-			Point p = SchemUtilities.schemToFrame(wall_point, location, Globals.PIXELS_PER_GRID());
-			g.setColor(Color.CYAN);
-			g.fillOval((int) p.getX() - z2, (int) p.getY() - z2, z2 * 2, z2 * 2);
-		}
-
-		if (perpendicular != null) {
-			Line l = SchemUtilities.schemToFrame(new Line(wall_point.getX(), wall_point.getY(), wall_point.getX()+perpendicular.getDX(), wall_point.getY()+perpendicular.getDY()), location, Globals.PIXELS_PER_GRID());
-			g.setColor(Color.RED);
-			g.drawLine((int) l.getX1(), (int) l.getY1(), (int) l.getX2(), (int) l.getY2());
-		}
+		// g.setStroke(new BasicStroke(4));
+		// g.setColor(Color.BLUE);
+		// g.drawLine((int) screen.getX1(), (int) screen.getY1(), (int) screen.getX2(),
+		// (int) screen.getY2());
 
 	}
 	/*
@@ -670,13 +678,12 @@ public class Application extends JPanel {
 			drawOverlay(dispG);
 		}
 		if (DEBUG_MODE) {
-			dispG.drawImage(debug_tick, 0,0,null);
+			dispG.drawImage(debug_tick, 0, 0, null);
 		}
 
 		drawUI(dispG);
 		drawDebugMenu(dispG);
 
-		
 		g.drawImage(display, 0, 0, this.getWidth(), this.getHeight(), null);
 
 	}
@@ -770,10 +777,10 @@ public class Application extends JPanel {
 		int height = this.getHeight();
 
 		Point topleft = new Point((width - Globals.PLAYER_SIZE) / 2,
-		(height - Globals.PLAYER_SIZE) / 2);
+				(height - Globals.PLAYER_SIZE) / 2);
 
 		Point bottomright = new Point((width + Globals.PLAYER_SIZE) / 2,
-		(height + Globals.PLAYER_SIZE) / 2);
+				(height + Globals.PLAYER_SIZE) / 2);
 
 		player_screen_pos = new Point(width / 2, height / 2);
 
@@ -859,7 +866,7 @@ public class Application extends JPanel {
 		Gun g = (Gun) weapon;
 
 		// if (g.MAG_TYPE() != g.mag.NAME()) {
-		// 	System.out.println("WRONG MAG INSERTED");
+		// System.out.println("WRONG MAG INSERTED");
 		// }
 
 		Point arm = new Point(player_screen_pos.getX() + location.getX(),
@@ -869,11 +876,11 @@ public class Application extends JPanel {
 
 		Point end = new Point(start.getX() / Globals.PIXELS_PER_GRID(),
 				start.getY() / Globals.PIXELS_PER_GRID());
-		
-		Bullet b = new Bullet(end.getX(), end.getY(), g.mag.BULLET_SIZE()*Globals.BULLET_SIZE_MULT, looking_angle,
+
+		Bullet b = new Bullet(end.getX(), end.getY(), g.mag.BULLET_SIZE() * Globals.BULLET_SIZE_MULT, looking_angle,
 				g.mag.BULLET_SPEED() * Globals.BULLET_SPEED_MULT);
-		
-				bullets.add(b);
+
+		bullets.add(b);
 
 		last_fire_tick = entry.tick;
 		g.mag.bullet_count--;
@@ -962,8 +969,8 @@ public class Application extends JPanel {
 
 		if (game) {
 			looking_angle = (Math.atan2(
-					(player_screen_pos.getY())-entry.peripherals.mousePos().getY(),
-					(player_screen_pos.getX())-entry.peripherals.mousePos().getX())) % (2 * Math.PI)
+					(player_screen_pos.getY()) - entry.peripherals.mousePos().getY(),
+					(player_screen_pos.getX()) - entry.peripherals.mousePos().getX())) % (2 * Math.PI)
 					+ Math.PI;
 
 			short intent_x = 0;
@@ -979,9 +986,9 @@ public class Application extends JPanel {
 				intent_x--;
 
 			if (intent_x != 0 || intent_y != 0) {
-				intent = PolarLine.fromComponentsUnitVector(intent_x, intent_y);
+				intent = DirectionVector.fromComponents(intent_x, intent_y);
 			} else {
-				intent = PolarLine.zero();
+				intent = DirectionVector.zero();
 			}
 
 			if (entry.peripherals.KeyToggled(KeyEvent.VK_U)) {
@@ -990,158 +997,164 @@ public class Application extends JPanel {
 
 			if (entry.peripherals.KeyToggled(KeyEvent.VK_O)) {
 				IntPoint end = playerSchemRoundedPos();
-				IntPoint start = new IntPoint((int)Math.round(enemy.getPos().getX()), (int)Math.round(enemy.getPos().getY()));
+				IntPoint start = new IntPoint((int) Math.round(enemy.getPos().getX()),
+						(int) Math.round(enemy.getPos().getY()));
 				enemy.updatePath(start, end, location, Globals.PIXELS_PER_GRID());
-				//enemy.updatePath(layers, start, end);
+				// enemy.updatePath(layers, start, end);
 			}
 
 			if (entry.peripherals.KeyToggled(KeyEvent.VK_P)) {
 				IntPoint pos = enemy.getIntPos();
-				// layers = PathFinding.PathFindDebug(new PathNode(pos.getX(), pos.getY(), null), 10,
+				// layers = PathFinding.PathFindDebug(new PathNode(pos.getX(), pos.getY(),
+				// null), 10,
 				// Enemy.check);
 				layers = PathfindingUtil.PathFindByWallsDebug(new PathNode(pos, null), 4, colliders);
 			}
 
-			
 		}
 	}
 
 	/*
 	 * PLAYER COLLISION AND MOVEMENT CODE
 	 */
+
+	public DirectionVector playerNextPosition(Graphics2D g, DirectionVector velocity, Point pos) {
+		double r = Globals.PLAYER_SIZE / Globals.PIXELS_PER_GRID() / 2;
+		double detection_radius = 1.0 * r;
+
+		Point schemPt = SchemUtilities.frameToSchem(player_screen_pos, location, Globals.PIXELS_PER_GRID());
+
+		DirectionVector speed = new DirectionVector(0, 0);
+		// player vector on screen
+		CalcVector PMV = new CalcVector(schemPt, velocity).scale(1, -1);
+
+		Point newPt = PMV.scale(1 / Globals.PIXELS_PER_GRID()).destination();
+
+		List<Collider> eligible_colliders = colliders.stream().filter(c -> {
+			Point linept = MathUtil.ClosestPointOnLine(c, schemPt);
+			boolean b = linept.distance(schemPt) < detection_radius;
+			boolean b2 = CollisionUtil.LineIntersectsWithColliders(new Line(schemPt, linept), colliders);
+			return b && !b2;
+		}).collect(Collectors.toList());
+
+		if (eligible_colliders.size() == 0)
+			return velocity;
+
+		for (Collider c : eligible_colliders) {
+
+			Line screenLine = SchemUtilities.schemToFrame(c, location, Globals.PIXELS_PER_GRID());
+
+			g.setColor(Color.MAGENTA);
+			g.setStroke(new BasicStroke(2));
+
+			g.drawLine((int) screenLine.getP1().getX(), (int) screenLine.getP1().getY(),
+					(int) screenLine.getP2().getX(), (int) screenLine.getP2().getY());
+
+		}
+
+		boolean colliding = false;
+
+		for (Collider c : eligible_colliders) {
+			//Collider c = eligible_colliders.get(0);
+
+			Point linept = MathUtil.ClosestPointOnLine(c, newPt);
+
+			CalcVector colliderV = CalcVector.fromPoints(c.getP1(), c.getP2());
+
+			CalcVector PPosV = CalcVector.fromPoints(linept, schemPt);
+
+			// double angle = MathUtil.getAngle(PMV, colliderV);
+			CalcVector perpendicular = MathUtil.perpendicularProjection(PMV, colliderV);
+			CalcVector parallel = MathUtil.parallelProjection(PMV, colliderV);
+
+			// drawVector(g, PMV, Color.RED);
+			// drawVector(g, perpendicular, Color.BLUE);
+			// drawVector(g, parallel, Color.ORANGE);
+
+			Point cornerpoint = null;
+			if (linept.equals(colliderV.origin()))
+				cornerpoint = colliderV.origin();
+			else if (linept.equals(colliderV.destination()))
+				cornerpoint = colliderV.destination();
+
+			if (cornerpoint != null) {
+				CalcVector cvec = CalcVector.fromPoints(cornerpoint, schemPt);
+				cvec.setMagnitude(r * 1);
+
+				drawVector(g, cvec, Color.GREEN);
+
+				setPlayerPosFromSchem(cvec.destination());
+				return velocity;
+			} else {
+				if (MathUtil.dotProduct(PMV, PPosV) <= 0) {
+					speed = speed.addVector(parallel.scale(1, -1));
+					speed = speed.subtractVector(perpendicular.scale(1, -1));
+					colliding = true;
+				}
+				//setPlayerPosFromSchem(perpendicular.withMagnitude(r).scale(-1,-1).origin());
+			}
+		}
+
+		if (colliding)
+			return speed;
+		else
+			return velocity;
+	}
+
 	public void playerCollisionAndMovementCode(Graphics2D g) {
 		g.setStroke(new BasicStroke(4));
-		double component_x = 0;
-		double component_y = 0;
 
 		velocity = velocity.addVector(intent.multiply(0.14));
 
 		if (velocity.getMagnitude() > Globals.PLAYER_MAX_SPEED)
 			velocity.setMagnitude(Globals.PLAYER_MAX_SPEED);
-		if (intent.equals(PolarLine.zero())) {
+		if (intent.equals(DirectionVector.zero())) {
 			if (velocity.getMagnitude() < Globals.PLAYER_MIN_SPEED_CUTOFF)
-				velocity = PolarLine.zero();
+				velocity = DirectionVector.zero();
 			else
 				velocity = velocity.addVector(velocity.multiply(-0.08));
 		}
 
-		component_x = velocity.getX();
-		component_y = velocity.getY();
-
-		if (CLIP_MODE)
-		{
-			location = location.shift(component_x, -component_y);
+		if (CLIP_MODE) {
+			location = location.shift(velocity.getDX(), -velocity.getDY());
 			return;
 		}
-		
 
-		double r = Globals.PLAYER_SIZE/Globals.PIXELS_PER_GRID()/2;
+		DirectionVector c1 = playerNextPosition(g, velocity, playerSchemPos());
 
-		Point schemPt = SchemUtilities.frameToSchem(player_screen_pos, location, Globals.PIXELS_PER_GRID());
+		location = location.shift(c1.getDX(), -c1.getDY());
 
-		//player vector on screen
-		CalcVector movement = new CalcVector(0, 0, component_x/Globals.PIXELS_PER_GRID(), component_y/Globals.PIXELS_PER_GRID());
-		PMV = new CalcVector(schemPt.getX(), schemPt.getY(), r*Math.cos(movement.getAngle()), -r*Math.sin(movement.getAngle())).add(movement);
-		
+		// for (int i = 0; i < bullets.size(); i++) {
+		// Bullet b = bullets.get(i);
+		// b.moveBullet();
+		// }
 
-		List<Integer> indeces = CollisionUtil.playerCollisionWithColliders(schemPt,
-				r*1.2, colliders);
-		colliding = indeces.size() > 0;
-
-		//if (colliding) {
-			List<Collider> colliders_hit = colliders.stream().filter(x -> indeces.contains(colliders.indexOf(x)))
-					.collect(Collectors.toList());
-
-			for (Collider collider : colliders_hit) {
-				//Collider collider = colliders_hit.get(0);
-				CalcVector colliderV = new CalcVector(collider.getX1(), collider.getY1(),
-						collider.getX2() - collider.getX1(), collider.getY2() - collider.getY1());
-				wall_point = CollisionUtil.ClosestPointOnLine(collider, schemPt);
-				perpendicular = MathUtil.perpendicularProjection(PMV, colliderV).getScaledVector(-1,-1).getUnitVector();
-
-				Point newpoint = new CalcVector(wall_point.getX(), wall_point.getY(), perpendicular.getDX(),
-						perpendicular.getDY()).getScaledVector(0.5).destination();
-
-				CalcVector perpendicular_left = new CalcVector(colliderV.origin(), perpendicular.getDX(),
-						perpendicular.getDY());
-				CalcVector perpendicular_right = new CalcVector(colliderV.destination(), perpendicular.getDX(),
-						perpendicular.getDY());
-
-				
-				drawVector(g, perpendicular_left, Color.RED);
-				drawVector(g, perpendicular_right, Color.RED);
-				
-
-				CalcVector left_v = new CalcVector(perpendicular_left.destination(), wall_point);
-				CalcVector right_v = new CalcVector(perpendicular_right.destination(), wall_point);
-
-				drawVector(g, left_v, Color.BLUE);
-				drawVector(g, right_v, Color.BLUE);
-
-				CalcVector parallel_left = left_v
-						.subtract(new CalcVector(0, 0, -perpendicular_left.getDX(), -perpendicular_left.getDY()));
-				CalcVector parallel_right = right_v
-						.subtract(new CalcVector(0, 0, -perpendicular_right.getDX(), -perpendicular_right.getDY()));
-
-				drawVector(g, parallel_left, Color.GREEN);
-				drawVector(g, parallel_right, Color.ORANGE);
-
-				Point corner_point = null;
-				if(wall_point.equals(colliderV.origin()))
-					corner_point = colliderV.origin();
-				else if(wall_point.equals(colliderV.destination()))
-					corner_point = colliderV.destination();
-
-				
-
-				// CalcVector loc_l = parallel_left.localize(perpendicular);
-				// CalcVector loc_r = parallel_right.localize(perpendicular);
-
-				
-				// //drawVector(g, parallel_right, Color.GREEN);
-				// System.out.println("left=" + loc_l.getDX() + " right=" + loc_r.getDX());
-				if (corner_point != null) {
-					CalcVector cvec = new CalcVector(corner_point, schemPt);
-					cvec = cvec.setMagnitude(r*1.2);
-					
-					//cvec = cvec.normalize(r);
-					drawVector(g, cvec, Color.GREEN);
-					setPlayerPosFromSchem(cvec.destination());
-					System.out.println("x");
-				}else
-				if (colliding) {
-					
-					setPlayerPosFromSchem(newpoint);
-				}
-			}
-		//}
-		location = location.shift(component_x, -component_y);
-
-
-		for (int i = 0; i < bullets.size(); i++) {
-			Bullet b = bullets.get(i);
-			b.moveBullet();
-		}
-		
 	}
 
-	private void drawVector(Graphics2D g, CalcVector perpendicular_left, Color red) {
+	private Point playerSchemPos() {
+		return SchemUtilities.frameToSchem(new Point((player_screen_pos.getX()), (player_screen_pos.getY())), location,
+				Globals.PIXELS_PER_GRID());
+	}
+
+	private void drawVector(Graphics2D g, CalcVector v1, Color red) {
+		// CalcVector vector = v1;
 		g.setStroke(new BasicStroke(2));
 		g.setColor(red);
-		Line g_line = SchemUtilities.schemToFrame(new Line(perpendicular_left.origin(), perpendicular_left.destination()), location, Globals.PIXELS_PER_GRID());
+		Line g_line = SchemUtilities.schemToFrame(MathUtil.vectorToLine(v1), location,
+				Globals.PIXELS_PER_GRID());
 		g.drawLine((int) g_line.getX1(), (int) g_line.getY1(), (int) g_line.getX2(), (int) g_line.getY2());
-		
-		Point dst = perpendicular_left.destination();
-		
-		double dangle = 5*Math.PI/6;
-		CalcVector left = CalcVector.fromAngleMag(dst, 0.2, perpendicular_left.getAngle() + dangle);
-		CalcVector right = CalcVector.fromAngleMag(dst, 0.2, perpendicular_left.getAngle() - dangle);
+
+		Point dst = v1.destination();
+
+		double dangle = 5 * Math.PI / 6;
+		CalcVector left = new CalcVector(dst.getX(), dst.getY(), 0.2, v1.getAngle() + dangle);
+		CalcVector right = new CalcVector(dst.getX(), dst.getY(), 0.2, v1.getAngle() - dangle);
 
 		Line l_line = SchemUtilities.schemToFrame(new Line(left.origin(), left.destination()), location,
 				Globals.PIXELS_PER_GRID());
 		Line r_line = SchemUtilities.schemToFrame(new Line(right.origin(), right.destination()), location,
 				Globals.PIXELS_PER_GRID());
-			
+
 		g.drawLine((int) l_line.getX1(), (int) l_line.getY1(), (int) l_line.getX2(), (int) l_line.getY2());
 		g.drawLine((int) r_line.getX1(), (int) r_line.getY1(), (int) r_line.getX2(), (int) r_line.getY2());
 	}
@@ -1176,8 +1189,10 @@ public class Application extends JPanel {
 	 * Move player given a SCHEMATIC coordinate
 	 */
 	void setPlayerPosFromSchem(Point p) {
-		location = new Point(p.getX() * Globals.PIXELS_PER_GRID() - player_screen_pos.getX(),
-				p.getY() * Globals.PIXELS_PER_GRID() - player_screen_pos.getY());
+		if (p != null && p.getX() != Double.NaN && p.getY() != Double.NaN) {
+			location = new Point(p.getX() * Globals.PIXELS_PER_GRID() - player_screen_pos.getX(),
+					p.getY() * Globals.PIXELS_PER_GRID() - player_screen_pos.getY());
+		}
 	}
 
 	/*
@@ -1198,7 +1213,8 @@ public class Application extends JPanel {
 	}
 
 	IntPoint playerSchemRoundedPos() {
-		return SchemUtilities.frameToSchemInt(new Point((player_screen_pos.getX()),(player_screen_pos.getY())), location, Globals.PIXELS_PER_GRID());
+		return SchemUtilities.frameToSchemInt(new Point((player_screen_pos.getX()), (player_screen_pos.getY())),
+				location, Globals.PIXELS_PER_GRID());
 	}
 
 	void paintColorRect(Graphics g, ColorRect rect, double depth) {
