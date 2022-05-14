@@ -19,6 +19,7 @@ import org.javatuples.Triplet;
 
 import gameObjects.LevelWall;
 import main.AppConstants;
+import main.GraphicsContext;
 import main.entry;
 import templates.Point;
 import templates.Rect;
@@ -27,7 +28,7 @@ import templates.Size;
 public class ShaderUtil {
     
     
-    public static Shape LightMask(Graphics2D dispG, Graphics2D debug, boolean shading, boolean clipping, boolean flashlight_enabled) {
+    public static Shape LightMask(GraphicsContext dispG, GraphicsContext debug, boolean shading, boolean clipping, boolean flashlight_enabled) {
         double looking_angle = entry.app.looking_angle;
         Point location = entry.app.location;
 		Point player_pos = entry.app.player_screen_pos;
@@ -52,8 +53,7 @@ public class ShaderUtil {
     
         // set clipping or shading default background
     	if (!shading) {
-    		dispG.setBackground(Color.BLACK);
-    		dispG.clearRect(0, 0, (int)screen.getWidth(), (int)screen.getHeight());
+			dispG.fillRect(0,0,screen.getWidth(),screen.getHeight(), Color.BLACK);
     	}
     	if (!clipping) {
     		visibility.add(new Area(new Rectangle2D.Float(0, 0, (int)screen.getWidth(), (int)screen.getHeight())));
@@ -87,8 +87,8 @@ public class ShaderUtil {
     				new float[] { 0.0f, 0.5f, 1.0f },
     				new Color[] { Color.BLACK, new Color(0, 0, 0, 220), new Color(0, 0, 0, 0) });
     
-    		dispG.setPaint(rgp);
-    		dispG.fill(
+    		dispG.getGraphics().setPaint(rgp);
+    		dispG.getGraphics().fill(
     				new Ellipse2D.Double(center.getX() - AppConstants.INNER_RADIUS, center.getY() - AppConstants.INNER_RADIUS,
     						AppConstants.INNER_RADIUS * 2, AppConstants.INNER_RADIUS * 2));
     
@@ -99,11 +99,11 @@ public class ShaderUtil {
     		center.getY() + AppConstants.FLASHLIGHT_RANGE * Math.sin(looking_angle)),
 					new Color(0, 0, 0, 0));
 			if (flashlight_enabled) {
-				dispG.setPaint(gp);
-				dispG.fill(light);
+				dispG.getGraphics().setPaint(gp);
+				dispG.getGraphics().fill(light);
 			}
     
-    		dispG.setPaint(null);
+    		dispG.getGraphics().setPaint(null);
     
     	}
     	if (clipping) {
@@ -210,20 +210,18 @@ public class ShaderUtil {
     					if (inner_first != null) {
     						o.addPoint((int) inner_first.getX(), (int) inner_first.getY());
     						if (i == 0) {
-    							debug.setColor(Color.WHITE);
     							debug.fillRect((int) inner_first.getX() - AppConstants.OVERLAY_MARKER_SIZE / 2,
     									(int) inner_first.getY() - AppConstants.OVERLAY_MARKER_SIZE / 2,
-    									AppConstants.OVERLAY_MARKER_SIZE, AppConstants.OVERLAY_MARKER_SIZE);
+										AppConstants.OVERLAY_MARKER_SIZE, AppConstants.OVERLAY_MARKER_SIZE, Color.WHITE);
     						}
     					}
     
     					if (outer_first != null) {
     						o.addPoint((int) outer_first.getValue1().getX(), (int) outer_first.getValue1().getY());
     						if (i == 0) {
-    							debug.setColor(Color.ORANGE);
     							debug.fillRect((int) outer_first.getValue1().getX() - AppConstants.OVERLAY_MARKER_SIZE / 2,
     									(int) outer_first.getValue1().getY() - AppConstants.OVERLAY_MARKER_SIZE / 2,
-    									AppConstants.OVERLAY_MARKER_SIZE, AppConstants.OVERLAY_MARKER_SIZE);
+    									AppConstants.OVERLAY_MARKER_SIZE, AppConstants.OVERLAY_MARKER_SIZE, Color.ORANGE);
     						}
     					}
     					if (outer_first != null && outer_last != null) {
@@ -278,20 +276,18 @@ public class ShaderUtil {
     					if (outer_last != null) {
     						o.addPoint((int) outer_last.getValue1().getX(), (int) outer_last.getValue1().getY());
     						if (i == 0) {
-    							debug.setColor(Color.BLUE);
     							debug.fillRect((int) outer_last.getValue1().getX() - AppConstants.OVERLAY_MARKER_SIZE / 2,
     									(int) outer_last.getValue1().getY() - AppConstants.OVERLAY_MARKER_SIZE / 2,
-    									AppConstants.OVERLAY_MARKER_SIZE, AppConstants.OVERLAY_MARKER_SIZE);
+    									AppConstants.OVERLAY_MARKER_SIZE, AppConstants.OVERLAY_MARKER_SIZE, Color.BLUE);
     						}
     					}
     
     					if (inner_last != null) {
     						o.addPoint((int) inner_last.getX(), (int) inner_last.getY());
     						if (i == 0) {
-    							debug.setColor(Color.GREEN);
     							debug.fillRect((int) inner_last.getX() - AppConstants.OVERLAY_MARKER_SIZE / 2,
     									(int) inner_last.getY() - AppConstants.OVERLAY_MARKER_SIZE / 2,
-    									AppConstants.OVERLAY_MARKER_SIZE, AppConstants.OVERLAY_MARKER_SIZE);
+    									AppConstants.OVERLAY_MARKER_SIZE, AppConstants.OVERLAY_MARKER_SIZE, Color.GREEN);
     						}
     					}
     
@@ -350,7 +346,7 @@ public class ShaderUtil {
     
     		//visibility.subtract(new Area(areas[0]));
     	}
-    	dispG.setPaint(null);
+    	dispG.getGraphics().setPaint(null);
     
     	for (LevelWall wall : entry.app.walls) {
     		if (wall.getAsset().equals("wood")) {
@@ -372,8 +368,8 @@ public class ShaderUtil {
     						new float[] { 0.0f, 0.5f, 1.0f },
     						new Color[] { Color.BLACK, new Color(0, 0, 0, 220), new Color(0, 0, 0, 0) });
     
-    				dispG.setPaint(rgp);
-    				dispG.fill(new Ellipse2D.Double(obj.getX() - AppConstants.LAMP_RADIUS, obj.getY() - AppConstants.LAMP_RADIUS,
+    				dispG.getGraphics().setPaint(rgp);
+    				dispG.getGraphics().fill(new Ellipse2D.Double(obj.getX() - AppConstants.LAMP_RADIUS, obj.getY() - AppConstants.LAMP_RADIUS,
     						AppConstants.LAMP_RADIUS * 2, AppConstants.LAMP_RADIUS * 2));
     			}
     		}

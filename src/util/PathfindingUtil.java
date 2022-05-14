@@ -15,6 +15,7 @@ import java.awt.Color;
 import org.javatuples.Pair;
 
 import gameObjects.Collider;
+import main.GraphicsContext;
 import templates.IntPoint;
 import templates.PathNode;
 import templates.Point;
@@ -293,9 +294,8 @@ public class PathfindingUtil {
         return depth;
     }
 
-    public static void displayPath(Graphics2D g, List<PathNode> layers, Point location,
+    public static void displayPath(GraphicsContext g, List<PathNode> layers, Point location,
             Function<Pair<IntPoint, IntPoint>, Boolean> inMap) {
-        g.setStroke(new BasicStroke(3));
 
         List<PathNode> nodes = new ArrayList<>();
         nodes.addAll(layers);
@@ -305,7 +305,6 @@ public class PathfindingUtil {
         int i = 0;
         while (nodes.size() > 0) {
             Color c = Color.getHSBColor(i * 0.4f / depth, 1, 1);
-            g.setColor(c);
             i++;
             for (int j = 0; j < nodes.size(); j++) {
                 PathNode node = nodes.get(j);
@@ -317,7 +316,7 @@ public class PathfindingUtil {
                     nodes.add(j, node.getParent());
                     Point p1 = SchematicUtil.schemToFrame(new Point(node.getPoint().getX()+0.5, node.getPoint().getY()+0.5), location);
                     Point p2 = SchematicUtil.schemToFrame(new Point(node.getParent().getPoint().getX()+0.5, node.getParent().getPoint().getY()+0.5), location);
-                    g.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY());
+                    g.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY(), c, 3);
                 }
                 
                 

@@ -42,28 +42,24 @@ public class DebugOverlay {
         }
     }
 
-    public static void DrawPathfindingPoints(Graphics2D g, Point location, List<Collider> subdivided_colliders) {
+    public static void DrawPathfindingPoints(GraphicsContext g, Point location, List<Collider> subdivided_colliders) {
         final int pointsize = 3;
         
         for (Collider c : subdivided_colliders) {
             Point pt3 = SchematicUtil.schemToFrame(c.getCenter(), location);
             for (Point pt : PathfindingUtil.getAdjacentPoints(c)) {
                 Point pt2 = SchematicUtil.schemToFrame(pt, location);
-                g.setColor(new Color(184, 123, 77));
-                g.drawLine((int) pt3.getX(), (int) pt3.getY(), (int) pt2.getX(), (int) pt2.getY());
+                g.drawLine((int) pt3.getX(), (int) pt3.getY(), (int) pt2.getX(), (int) pt2.getY(), new Color(184, 123, 77), 2);
                 
-                g.setColor(Color.ORANGE);
-                g.fillOval((int) pt2.getX() - pointsize, (int) pt2.getY() - pointsize, pointsize * 2, pointsize * 2);
+                g.fillCircle((int) pt2.getX(), (int) pt2.getY(), pointsize, Color.ORANGE);
                 
             }
         }
     }
     
-    public static void DrawPathfindingCorners(Graphics2D g, Point location, List<Collider> subdivided_colliders) {
+    public static void DrawPathfindingCorners(GraphicsContext g, Point location, List<Collider> subdivided_colliders) {
         final int pointsize = 3;
         
-        g.setStroke(new BasicStroke(3));
-		g.setColor(Color.RED);
 		for (Vector l2 : PathfindingUtil.getCornerLines(subdivided_colliders)) {
 			Point p0 = SchematicUtil.schemToFrame(l2.origin(), location);
             Point p1 = SchematicUtil.schemToFrame(l2.destination(), location);
@@ -71,22 +67,18 @@ public class DebugOverlay {
             Point pt3 = SchematicUtil.schemToFrame(l2.getCenter(), location);
             for (Point pt : PathfindingUtil.getAdjacentPoints(l2)) {
                 Point pt2 = SchematicUtil.schemToFrame(pt, location);
-                g.setColor(Color.PINK);
-                g.drawLine((int) pt3.getX(), (int) pt3.getY(), (int) pt2.getX(), (int) pt2.getY());
+                g.drawLine((int) pt3.getX(), (int) pt3.getY(), (int) pt2.getX(), (int) pt2.getY(), Color.PINK, 3);
                 
-                g.setColor(Color.ORANGE);
-                g.fillOval((int) pt2.getX() - pointsize, (int) pt2.getY() - pointsize, pointsize * 2, pointsize * 2);
+                g.fillCircle(pt2.getX(), pt2.getY(), pointsize, Color.ORANGE);
                 
             }
 
-            g.setColor(Color.BLUE);
-            g.drawLine((int) p0.getX(), (int) p0.getY(), (int) p1.getX(), (int) p1.getY());
+            g.drawLine((int) p0.getX(), (int) p0.getY(), (int) p1.getX(), (int) p1.getY(), Color.BLUE, 3);
 		}
     }
 
-    public static void DrawEnemyPaths(Graphics2D g, Point location, List<Enemy> enemies) {
+    public static void DrawEnemyPaths(GraphicsContext g, Point location, List<Enemy> enemies) {
         final int psize = 3;
-        g.setStroke(new BasicStroke(4));
 
         for (Enemy enemy : enemies) {
 			if (enemy.getPath() != null) {
@@ -96,7 +88,7 @@ public class DebugOverlay {
                 for (Point point : points) {
                     Point p2 = SchematicUtil.schemToFrame(
                             new Point(point.getX() + POINT_OFFSET, point.getY() + POINT_OFFSET), location);
-                    g.drawOval((int) p2.getX() - psize, (int) p2.getY() - psize, psize * 2, psize * 2);
+                    g.drawCircle(p2.getX(),  p2.getY(), psize * 2, Color.ORANGE, 4);
                 }
 				
 				for (int i = 0; i < points.size() - 1; i++) {
@@ -107,16 +99,13 @@ public class DebugOverlay {
 							new Point(current.getX() + POINT_OFFSET, current.getY() + POINT_OFFSET), location);
 					Point p2 = SchematicUtil.schemToFrame(
 							new Point(next.getX() + POINT_OFFSET, next.getY() + POINT_OFFSET), location);
-					g.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY());
+					g.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY(), Color.YELLOW, 2);
 				}
 			}
 		}
     }
 
-    public static void DrawNewGameObjectOverlay(Graphics2D g, Point location) {
-        g.setColor(Color.BLUE);
-        g.setStroke(new BasicStroke(4));
-
+    public static void DrawNewGameObjectOverlay(GraphicsContext g, Point location) {
         for (LevelTile o : entry.app.newTiles) {
 
             Rect r = SchematicUtil.schemToFrame(o, location);
@@ -133,37 +122,32 @@ public class DebugOverlay {
         for (Collider o : entry.app.newColliders) {
             Vector r = SchematicUtil.schemToFrame(o, location);
             if (entry.app.inScreenSpace(r))
-                g.drawLine((int) r.origin().getX(), (int) r.origin().getY(), (int) r.destination().getX(), (int) r.destination().getY());
+                g.drawLine(r.origin().getX(),  r.origin().getY(),  r.destination().getX(), r.destination().getY(), Color.BLUE, 2);
         }
     }
     
-    public static void DrawColliders(Graphics2D g, Point location, List<Collider> subdivided_colliders) {
-        g.setColor(Color.RED);
-        g.setStroke(new BasicStroke(3));
+    public static void DrawColliders(GraphicsContext g, Point location, List<Collider> subdivided_colliders) {
 
         for (Collider o : subdivided_colliders) {
             Vector r = SchematicUtil.schemToFrame(o, location);//.constrict(0.1)
             if (entry.app.inScreenSpace(r))
                 g.drawLine((int) r.origin().getX(), (int) r.origin().getY(), (int) r.destination().getX(),
-                        (int) r.destination().getY());
+                        (int) r.destination().getY(), Color.RED, 3);
         }
     }
 
-    public static void DrawGrid(Graphics2D g, Point location, Rect level_schem_space) {
-        g.setColor(Color.GREEN);
-        g.setStroke(new BasicStroke(2));
-        
+    public static void DrawGrid(GraphicsContext gc, Point location, Rect level_schem_space) {
         for (int x1 = (int) level_schem_space.left(); x1 < level_schem_space.right(); x1++) {
             for (int y1 = (int) level_schem_space.top(); y1 < level_schem_space.bottom(); y1++) {
                 Point p = SchematicUtil.schemToFrame(new Point(x1, y1), location);
                 if (entry.app.inScreenSpace(p) || entry.app.inScreenSpace(SchematicUtil.schemToFrame(new Point(x1, y1).shift(1, 1), location))) {
 
-                    g.drawLine((int) p.getX(), (int) p.getY(), (int) p.getX(),
-                            (int) (p.getY() + AppConstants.PIXELS_PER_GRID()));
+                    gc.drawLine(p.getX(), p.getY(), p.getX(),
+                            p.getY() + AppConstants.PIXELS_PER_GRID(), Color.GREEN, 2);
 
-                    g.drawLine((int) p.getX(), (int) p.getY(),
-                            (int) (p.getX() + AppConstants.PIXELS_PER_GRID()),
-                            (int) p.getY());
+                    gc.drawLine(p.getX(),p.getY(),
+                            p.getX() + AppConstants.PIXELS_PER_GRID(),
+                            p.getY(), Color.GREEN, 2);
                 }
             
                 
@@ -196,7 +180,7 @@ public class DebugOverlay {
 			}
     }
 
-    public static void DrawDebugDropdown(Graphics2D g, List<Triplet<String, Runnable, Callable<String>>> options,
+    public static void DrawDebugDropdown(GraphicsContext g, List<Triplet<String, Runnable, Callable<String>>> options,
             int selection) {
         int WIDTH = entry.app.getWidth();
         int HEIGHT = entry.app.getHeight();
@@ -205,26 +189,21 @@ public class DebugOverlay {
         final int VERT_MID_SPACING = 6;
         final int SIDE_SPACING = 20;
 
-        g.setFont(DEBUG_FONT);
-        int text_height = g.getFontMetrics(DEBUG_FONT).getAscent();
+        int text_height = g.getGraphics().getFontMetrics(DEBUG_FONT).getAscent();
 
         final int TOTAL_HEIGHT = text_height * options.size() + VERT_MID_SPACING * (options.size())
                 + 2 * VERT_SPACING;
         final int TOTAL_WIDTH = options.stream()
-                .map(s -> g.getFontMetrics(DEBUG_FONT).stringWidth(s.getValue0()))
+                .map(s -> g.getGraphics().getFontMetrics(DEBUG_FONT).stringWidth(s.getValue0()))
                 .max(Comparator.naturalOrder()).get() + 2 * SIDE_SPACING;
         Rect bound = new Rect(WIDTH - 20 - TOTAL_WIDTH, 20, WIDTH - 20,
                 20 + TOTAL_HEIGHT);
 
-        g.setColor(Color.DARK_GRAY);
-        g.fillRect((int) bound.left(), (int) bound.top(), (int) bound.getWidth(), (int) bound.getHeight());
+        g.fillRect((int) bound.left(), (int) bound.top(), (int) bound.getWidth(), (int) bound.getHeight(), Color.DARK_GRAY);
 
-        g.setColor(Color.LIGHT_GRAY);
         g.fillRect((int) bound.left(),
                 (int) (bound.top() + VERT_SPACING + (selection) * (text_height + VERT_MID_SPACING)),
-                (int) bound.getWidth(), (int) text_height + 8);
-
-        g.setColor(Color.WHITE);
+                (int) bound.getWidth(), (int) text_height + 8, Color.GRAY);
 
         for (int i = 0; i < options.size(); i++) {
             Triplet<String, Runnable, Callable<String>> triplet = options.get(i);
@@ -241,11 +220,11 @@ public class DebugOverlay {
             }
 
             g.drawString(name, (int) (bound.left() + SIDE_SPACING),
-                    (int) (bound.top() + (i + 1) * text_height + (i) * VERT_MID_SPACING + VERT_SPACING));
+                    (int) (bound.top() + (i) * text_height + (i) * VERT_MID_SPACING + VERT_SPACING), Color.WHITE, DEBUG_FONT);
         }
     }
     
-    public static void DrawAssetLibrary(Graphics2D g, HashMap<String, ImageAsset> assets, int selection) {
+    public static void DrawAssetLibrary(GraphicsContext g, HashMap<String, ImageAsset> assets, int selection) {
         int WIDTH = entry.app.getWidth();
         int HEIGHT = entry.app.getHeight();
         final int BUFFER = 50;
@@ -253,8 +232,7 @@ public class DebugOverlay {
         
 
         ArrayList<String> keys = new ArrayList<String>(assets.keySet());
-        g.setColor(new Color(80, 80, 80, 200));
-        g.fillRect(BUFFER, BUFFER, WIDTH - 2 * BUFFER, HEIGHT - 2 * BUFFER);
+        g.fillRect(BUFFER, BUFFER, WIDTH - 2 * BUFFER, HEIGHT - 2 * BUFFER, new Color(80, 80, 80, 200));
 			
 			int img_size = (int) (WIDTH- 2 * BUFFER - (ASSET_MENU_HORIZONTAL + 1) * BETWEEN_IMG)
 					/ ASSET_MENU_HORIZONTAL;
@@ -271,16 +249,16 @@ public class DebugOverlay {
 					BufferedImage img = assets.get(keys.get(index)).source;
 
 					if (selection == index) {
-						g.setColor(Color.ORANGE);
-						g.setStroke(new BasicStroke(8));
-						g.fillRect(posx - 4, posy - 4, img_size + 8, img_size + 8);
+                        g.fillRect(posx - 4, posy - 4, img_size + 8, img_size + 8, Color.ORANGE);
+                        
 					}
-					g.drawImage(img, posx, posy, img_size, img_size, null);
-					g.setColor(Color.WHITE);
+					g.drawImage(img, posx, posy, img_size, img_size);
+
+
 					String msg = keys.get(index);
-					int height = g.getFontMetrics().getAscent();
-					int width = (int) g.getFontMetrics().getStringBounds(msg, g).getWidth();
-					g.drawString(msg, posx + img_size / 2 - width / 2, posy + img_size + 10 + height);
+					int height = g.getGraphics().getFontMetrics().getAscent();
+					int width = (int) g.getGraphics().getFontMetrics().getStringBounds(msg, g.getGraphics()).getWidth();
+					g.drawString(msg, posx + img_size / 2 - width / 2, posy + img_size + 10 + height, Color.WHITE, DEBUG_FONT);
 				}
 			}
     }

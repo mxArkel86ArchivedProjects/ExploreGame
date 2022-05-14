@@ -126,7 +126,7 @@ public class Application extends JPanel {
 	boolean SHADOWS_MODE = false;
 	boolean SHOW_ASSETS_MENU = false;
 	boolean FLASHLIGHT_ENABLED = false;
-	boolean ENEMY_FOLLOW = true;
+	boolean ENEMY_FOLLOW = false;
 
 	GraphicsConfiguration gconfig = null;
 
@@ -381,7 +381,7 @@ public class Application extends JPanel {
 
 	}
 
-	void RawGame(Graphics2D g) {
+	void RawGame(GraphicsContext g) {
 		for (LevelTile o : tiles) {
 
 			Rect r = SchematicUtil.schemToFrame(o, location);
@@ -398,71 +398,56 @@ public class Application extends JPanel {
 
 		}
 
-		g.setColor(Color.YELLOW);
-		g.fillOval((int) (player_screen_pos.getX() - AppConstants.PLAYER_SIZE / 2),
-				(int) (player_screen_pos.getY() - AppConstants.PLAYER_SIZE / 2), (int) AppConstants.PLAYER_SIZE,
-				(int) AppConstants.PLAYER_SIZE);
+		g.fillCircle(player_screen_pos.getX(), player_screen_pos.getY(), AppConstants.PLAYER_SIZE/2, Color.YELLOW);
 
-		g.setColor(Color.YELLOW);
 		for (Enemy enemy : enemies) {
 			Point pnew = SchematicUtil.schemToFrame(
 					new Point(enemy.getPos().getX() + 0.5, enemy.getPos().getY() + 0.5),
 					location);
-			g.fillOval((int) (pnew.getX() - enemy.getRadius() * AppConstants.PIXELS_PER_GRID()),
-					(int) (pnew.getY() - enemy.getRadius() * AppConstants.PIXELS_PER_GRID()),
-					(int) (enemy.getRadius() * 2 * AppConstants.PIXELS_PER_GRID()),
-					(int) (enemy.getRadius() * 2 * AppConstants.PIXELS_PER_GRID()));
+			g.fillCircle(pnew.getX(), pnew.getY(), enemy.getRadius()*AppConstants.PIXELS_PER_GRID(), Color.YELLOW);
 		}
-		g.setColor(Color.RED);
+		
 		for (Bullet b : bullets) {
 			Rect r = SchematicUtil.schemToFrame(
 					new Rect(b.getPos().shift(-b.getRadius() / 2, -b.getRadius() / 2),
 							new Size(b.getRadius(), b.getRadius())),
 					location);
 			if (inScreenSpace(r))
-				g.fillOval((int) r.left(), (int) r.top(), (int) r.getWidth(), (int) r.getHeight());
+				g.fillCircle(r.center().getX(), r.center().getY(), r.getWidth()/2, Color.RED);
 		}
 
 		for (Enemy e : enemies) {
 			Point pos = SchematicUtil.schemToFrame(e.getPos().shift(0.5, 0.5), location);
-			g.setColor(Color.RED);
+			
 			g.fillRect((int) (pos.getX() - e.getRadius() * AppConstants.PIXELS_PER_GRID()),
 					(int) (pos.getY() - e.getRadius() * AppConstants.PIXELS_PER_GRID() - 10),
-					(int) ((e.getRadius() * 2 * AppConstants.PIXELS_PER_GRID()) * e.getHealth() / 100), 6);
+					(int) ((e.getRadius() * 2 * AppConstants.PIXELS_PER_GRID()) * e.getHealth() / 100), 6, Color.RED);
 		}
 	}
 
-	void drawPlayerUI(Graphics2D g) {
+	void drawPlayerUI(GraphicsContext g) {
 		// HEALTH BARS
-		g.setColor(Color.RED);
-		g.fillRect(20, this.getHeight() - 60, (int) (200 * (health / 100)), 10);
+		g.fillRect(20, this.getHeight() - 60, (int) (200 * (health / 100)), 10, Color.RED);
 
-		g.setStroke(new BasicStroke(2));
-		g.setColor(Color.BLACK);
-		g.drawRect(20, this.getHeight() - 60, 200, 10);
-		g.drawRect(20, this.getHeight() - 40, 200, 10);
+		g.drawRect(20, this.getHeight() - 60, 200, 10, Color.BLACK, 2);
+		g.drawRect(20, this.getHeight() - 40, 200, 10, Color.BLACK, 2);
 
-		// AMMO TEXT
-		g.setColor(Color.WHITE);
-		g.setFont(AMMO_TEXT);
 
 		Gun gun = (Gun) weapon;
 		if (gun.mag != null) {
 			String bullet_str = String.format("%d/%d", gun.mag.bullet_count, gun.mag.BULLET_MAX());
 			g.drawString(bullet_str,
-					(int) (-g.getFontMetrics().getStringBounds(bullet_str, g).getWidth() + this.getWidth() - 20),
-					(int) (-g.getFontMetrics().getAscent() - 20 + this.getHeight()));
+					(int) (-g.getGraphics().getFontMetrics().getStringBounds(bullet_str, g.getGraphics()).getWidth() + this.getWidth() - 20),
+					(int) (-20 + this.getHeight()), Color.WHITE, AMMO_TEXT);
 		}
 
 		// FIRING DELAY INDICATOR
-		g.setColor(Color.WHITE);
-		g.setStroke(new BasicStroke(2));
 		Point mousepos = entry.peripherals.mousePos();
 		if (entry.tick - last_fire_tick < gun.FIRING_DELAY()) {
 			int size1 = 14;
 			double percent = ((entry.tick - last_fire_tick) * 1.0f / gun.FIRING_DELAY());
-			g.drawArc((int) mousepos.getX() - size1, (int) mousepos.getY() - size1, 2 * size1, 2 * size1, 0,
-					(int) (360 * percent));
+			g.drawArc(mousepos.getX() - size1, mousepos.getY() - size1, 2 * size1, 2 * size1, 0,
+					(360 * percent), Color.WHITE, 2);
 		}
 	}
 	/*
@@ -493,69 +478,67 @@ public class Application extends JPanel {
 				Math.min(this.getHeight(),
 						LEVEL_SCHEM_SPACE.bottom() * AppConstants.PIXELS_PER_GRID() - location.getY()));
 
-		Graphics2D g = (Graphics2D) display.getGraphics();
-		Graphics2D overlayG = (Graphics2D) overlay.getGraphics();
+		GraphicsContext gc = new GraphicsContext((Graphics2D)display.getGraphics());
+		GraphicsContext overlayG = new GraphicsContext((Graphics2D) overlay.getGraphics());
 
-		g.setBackground(new Color(0, 0, 0, 0));
-		g.clearRect(0, 0, display.getWidth(), display.getHeight());
-		overlayG.setBackground(new Color(0, 0, 0, 0));
-		overlayG.clearRect(0, 0, overlay.getWidth(), overlay.getHeight());
+		gc.clear(0,0,display.getWidth(),display.getHeight());
+		overlayG.clear(0, 0, overlay.getWidth(), overlay.getHeight());
 
 		panelGraphics.setBackground(Color.BLACK);
 		panelGraphics.clearRect(0, 0, this.getWidth(), this.getHeight());
 
+		
 		if (LIGHT_MODE || SHADOWS_MODE) {
+			Graphics2D g = (Graphics2D)overlayG.getGraphics();
 			g.setComposite(ac_def);
 
-			Shape mask = ShaderUtil.LightMask(g, overlayG, SHADOWS_MODE, LIGHT_MODE, FLASHLIGHT_ENABLED);
+			Shape mask = ShaderUtil.LightMask(gc, overlayG, SHADOWS_MODE, LIGHT_MODE, FLASHLIGHT_ENABLED);
 			g.setClip(mask);
 
 			g.setComposite(ac);
 
-			RawGame(g);
+			RawGame(gc);
 
 			g.setComposite(ac_def);
 			g.setClip(null);
 
 		} else {
-			RawGame(g);
+			RawGame(gc);
 		}
 		if (SHOW_GRID)
-			DebugOverlay.DrawGrid(g, location, LEVEL_SCHEM_SPACE);
+			DebugOverlay.DrawGrid(gc, location, LEVEL_SCHEM_SPACE);
 
 		if (layers != null) {
-			PathfindingUtil.displayPath(g, layers, location, Enemy.check);
+			PathfindingUtil.displayPath(gc, layers, location, Enemy.check);
 		}
 
-		drawPlayerUI(g);
+		drawPlayerUI(gc);
 
 		if (OVERLAY_MODE) {
-			DebugOverlay.DrawPathfindingPoints(g, location, subdivided_colliders);
-			DebugOverlay.DrawPathfindingCorners(g, location, subdivided_colliders);
+			DebugOverlay.DrawPathfindingPoints(gc, location, subdivided_colliders);
+			DebugOverlay.DrawPathfindingCorners(gc, location, subdivided_colliders);
 
-			DebugOverlay.DrawEnemyPaths(g, location, enemies);
+			DebugOverlay.DrawEnemyPaths(gc, location, enemies);
 
-			DebugOverlay.DrawColliders(g, location, subdivided_colliders);
+			DebugOverlay.DrawColliders(gc, location, subdivided_colliders);
 
-			g.drawImage(overlay, 0, 0, null);
+			gc.getGraphics().drawImage(overlay, 0, 0, null);
 		}
 
 		if (SHOW_ASSETS_MENU) {
-			DebugOverlay.DrawAssetLibrary(g, assets, asset_library_selection);
+			DebugOverlay.DrawAssetLibrary(gc, assets, asset_library_selection);
 		} else {
-			DebugOverlay.DrawDebugDropdown(g, debug_opts, debug_dropdown_selection);
+			DebugOverlay.DrawDebugDropdown(gc, debug_opts, debug_dropdown_selection);
 		}
 
-		drawCursor(g);
+		drawCursor(gc);
 
 		panelGraphics.drawImage(display, 0, 0, this.getWidth(), this.getHeight(), null);
 	}
 
-	private void drawCursor(Graphics2D g) {
-		double r = 2;
-		g.setColor(Color.WHITE);
+	private void drawCursor(GraphicsContext g) {
 		Point p2 = entry.peripherals.mousePos();
-		g.fillOval((int)(p2.getX()-r), (int)(p2.getY()-r), (int)(2*r), (int)(2*r));
+		g.fillCircle(p2.getX(), p2.getY(), 3, Color.WHITE);
 	}
 
 	/*

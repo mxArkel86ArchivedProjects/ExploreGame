@@ -9,6 +9,7 @@ import java.util.List;
 import gameObjects.Collider;
 import gameObjects.LevelTile;
 import gameObjects.LevelWall;
+import main.GraphicsContext;
 import main.entry;
 import templates.Point;
 import templates.Rect;
@@ -38,27 +39,25 @@ public class DrawUtil {
 		g.fillPolygon(x_, y_, x.size());
 	}
 
-	public static void paintLevelTile(Graphics g, Point location, LevelTile p) {
+	public static void paintLevelTile(GraphicsContext g, Point location, LevelTile p) {
 		Rect r = SchematicUtil.schemToFrame(p, location);
 		if (!entry.app.assets.containsKey(p.getAsset())) {
-			g.setColor(Color.RED);
-			g.fillRect((int) Math.round(r.left()), (int) Math.round(r.top()), (int) r.getWidth(), (int) r.getHeight());
+			g.fillRect(r.left(), r.top(), r.getWidth(), r.getHeight(), Color.RED);
 		} else {
 			BufferedImage img = entry.app.assets.get(p.getAsset()).source;
-			g.drawImage(img, (int) Math.round(r.left()), (int) Math.round(r.top()), (int) r.getWidth(),
-					(int) r.getHeight(), null);
+			g.drawImage(img, r.left(), r.top(), r.getWidth(),
+					r.getHeight());
 		}
 	}
 
-    public static void paintLevelWall(Graphics g, Point location, LevelWall p) {
+    public static void paintLevelWall(GraphicsContext g, Point location, LevelWall p) {
     	Rect r = SchematicUtil.schemToFrame(p, location);
     	if (!entry.app.assets.containsKey(p.getAsset())) {
-    		g.setColor(Color.RED);
-    		g.fillRect((int) Math.round(r.left()), (int) Math.round(r.top()), (int) r.getWidth(), (int) r.getHeight());
+    		g.fillRect(r.left(), r.top(), r.getWidth(), r.getHeight(), Color.RED);
     	} else {
     		BufferedImage img = entry.app.assets.get(p.getAsset()).source;
-    		g.drawImage(img, (int) Math.round(r.left()), (int) Math.round(r.top()), (int) r.getWidth(),
-    				(int) r.getHeight(), null);
+    		g.drawImage(img, r.left(), r.top(), r.getWidth(),
+					r.getHeight());
     	}
     }
 
