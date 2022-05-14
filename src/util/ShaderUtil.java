@@ -18,7 +18,7 @@ import org.javatuples.Pair;
 import org.javatuples.Triplet;
 
 import gameObjects.LevelWall;
-import main.Globals;
+import main.AppConstants;
 import main.entry;
 import templates.Point;
 import templates.Rect;
@@ -31,7 +31,7 @@ public class ShaderUtil {
         double looking_angle = entry.app.looking_angle;
         Point location = entry.app.location;
 		Point player_pos = entry.app.player_screen_pos;
-		double player_size = Globals.PLAYER_SIZE;
+		double player_size = AppConstants.PLAYER_SIZE;
         Rect screen = entry.app.LEVEL_SCREEN_SPACE;
 
     	double dx = 360 * Math.cos(looking_angle);
@@ -64,39 +64,39 @@ public class ShaderUtil {
     
     	// --------
         Polygon light = new Polygon();
-    	double angle_1 = looking_angle - Globals.FLASHLIGHT_FOV;
-    	double angle_2 = looking_angle + Globals.FLASHLIGHT_FOV;
+    	double angle_1 = looking_angle - AppConstants.FLASHLIGHT_FOV;
+    	double angle_2 = looking_angle + AppConstants.FLASHLIGHT_FOV;
     	light.addPoint((int) (center.getX() + small_radius * Math.cos(angle_1)),
     			(int) (center.getY() + small_radius * Math.sin(angle_1)));
     
-    	light.addPoint((int) (center.getX() + dx + Globals.FLASHLIGHT_RANGE * Math.cos(angle_1)),
-    			(int) (center.getY() + dy + Globals.FLASHLIGHT_RANGE * Math.sin(angle_1)));
-    	light.addPoint((int) (center.getX() + dx + Globals.FLASHLIGHT_RANGE * Math.cos(angle_2)),
-    			(int) (center.getY() + dy + Globals.FLASHLIGHT_RANGE * Math.sin(angle_2)));
+    	light.addPoint((int) (center.getX() + dx + AppConstants.FLASHLIGHT_RANGE * Math.cos(angle_1)),
+    			(int) (center.getY() + dy + AppConstants.FLASHLIGHT_RANGE * Math.sin(angle_1)));
+    	light.addPoint((int) (center.getX() + dx + AppConstants.FLASHLIGHT_RANGE * Math.cos(angle_2)),
+    			(int) (center.getY() + dy + AppConstants.FLASHLIGHT_RANGE * Math.sin(angle_2)));
     
     	light.addPoint((int) (center.getX() + small_radius * Math.cos(angle_2)),
     			(int) (center.getY() + small_radius * Math.sin(angle_2)));
     
-    	Ellipse2D e2d = new Ellipse2D.Double(center.getX() - Globals.INNER_RADIUS, center.getY() - Globals.INNER_RADIUS,
-    			Globals.INNER_RADIUS * 2, Globals.INNER_RADIUS * 2);
+    	Ellipse2D e2d = new Ellipse2D.Double(center.getX() - AppConstants.INNER_RADIUS, center.getY() - AppConstants.INNER_RADIUS,
+    			AppConstants.INNER_RADIUS * 2, AppConstants.INNER_RADIUS * 2);
     
     	if (shading) {
     
     		RadialGradientPaint rgp = new RadialGradientPaint(new Point2D.Double(center.getX(), center.getY()),
-    				(float) Globals.INNER_RADIUS,
+    				(float) AppConstants.INNER_RADIUS,
     				new float[] { 0.0f, 0.5f, 1.0f },
     				new Color[] { Color.BLACK, new Color(0, 0, 0, 220), new Color(0, 0, 0, 0) });
     
     		dispG.setPaint(rgp);
     		dispG.fill(
-    				new Ellipse2D.Double(center.getX() - Globals.INNER_RADIUS, center.getY() - Globals.INNER_RADIUS,
-    						Globals.INNER_RADIUS * 2, Globals.INNER_RADIUS * 2));
+    				new Ellipse2D.Double(center.getX() - AppConstants.INNER_RADIUS, center.getY() - AppConstants.INNER_RADIUS,
+    						AppConstants.INNER_RADIUS * 2, AppConstants.INNER_RADIUS * 2));
     
     		GradientPaint gp = new GradientPaint(new Point2D.Double(center.getX(), center.getY()),
     		Color.BLACK,
-    		new Point2D.Double(center.getX() + Globals.FLASHLIGHT_RANGE *
+    		new Point2D.Double(center.getX() + AppConstants.FLASHLIGHT_RANGE *
     		Math.cos(looking_angle),
-    		center.getY() + Globals.FLASHLIGHT_RANGE * Math.sin(looking_angle)),
+    		center.getY() + AppConstants.FLASHLIGHT_RANGE * Math.sin(looking_angle)),
 					new Color(0, 0, 0, 0));
 			if (flashlight_enabled) {
 				dispG.setPaint(gp);
@@ -119,7 +119,7 @@ public class ShaderUtil {
     	if (clipping) {
     
     		for (LevelWall w : entry.app.walls) {
-    			Rect rect = SchemUtilities.schemToFrame(w, location, Globals.PIXELS_PER_GRID());
+    			Rect rect = SchematicUtil.schemToFrame(w, location);
     			if (entry.app.inScreenSpace(rect)) {
     				Point PLAYER_CENTER = player_pos;
     				Point WALL_CENTER = rect.center();
@@ -211,9 +211,9 @@ public class ShaderUtil {
     						o.addPoint((int) inner_first.getX(), (int) inner_first.getY());
     						if (i == 0) {
     							debug.setColor(Color.WHITE);
-    							debug.fillRect((int) inner_first.getX() - Globals.OVERLAY_MARKER_SIZE / 2,
-    									(int) inner_first.getY() - Globals.OVERLAY_MARKER_SIZE / 2,
-    									Globals.OVERLAY_MARKER_SIZE, Globals.OVERLAY_MARKER_SIZE);
+    							debug.fillRect((int) inner_first.getX() - AppConstants.OVERLAY_MARKER_SIZE / 2,
+    									(int) inner_first.getY() - AppConstants.OVERLAY_MARKER_SIZE / 2,
+    									AppConstants.OVERLAY_MARKER_SIZE, AppConstants.OVERLAY_MARKER_SIZE);
     						}
     					}
     
@@ -221,9 +221,9 @@ public class ShaderUtil {
     						o.addPoint((int) outer_first.getValue1().getX(), (int) outer_first.getValue1().getY());
     						if (i == 0) {
     							debug.setColor(Color.ORANGE);
-    							debug.fillRect((int) outer_first.getValue1().getX() - Globals.OVERLAY_MARKER_SIZE / 2,
-    									(int) outer_first.getValue1().getY() - Globals.OVERLAY_MARKER_SIZE / 2,
-    									Globals.OVERLAY_MARKER_SIZE, Globals.OVERLAY_MARKER_SIZE);
+    							debug.fillRect((int) outer_first.getValue1().getX() - AppConstants.OVERLAY_MARKER_SIZE / 2,
+    									(int) outer_first.getValue1().getY() - AppConstants.OVERLAY_MARKER_SIZE / 2,
+    									AppConstants.OVERLAY_MARKER_SIZE, AppConstants.OVERLAY_MARKER_SIZE);
     						}
     					}
     					if (outer_first != null && outer_last != null) {
@@ -279,9 +279,9 @@ public class ShaderUtil {
     						o.addPoint((int) outer_last.getValue1().getX(), (int) outer_last.getValue1().getY());
     						if (i == 0) {
     							debug.setColor(Color.BLUE);
-    							debug.fillRect((int) outer_last.getValue1().getX() - Globals.OVERLAY_MARKER_SIZE / 2,
-    									(int) outer_last.getValue1().getY() - Globals.OVERLAY_MARKER_SIZE / 2,
-    									Globals.OVERLAY_MARKER_SIZE, Globals.OVERLAY_MARKER_SIZE);
+    							debug.fillRect((int) outer_last.getValue1().getX() - AppConstants.OVERLAY_MARKER_SIZE / 2,
+    									(int) outer_last.getValue1().getY() - AppConstants.OVERLAY_MARKER_SIZE / 2,
+    									AppConstants.OVERLAY_MARKER_SIZE, AppConstants.OVERLAY_MARKER_SIZE);
     						}
     					}
     
@@ -289,9 +289,9 @@ public class ShaderUtil {
     						o.addPoint((int) inner_last.getX(), (int) inner_last.getY());
     						if (i == 0) {
     							debug.setColor(Color.GREEN);
-    							debug.fillRect((int) inner_last.getX() - Globals.OVERLAY_MARKER_SIZE / 2,
-    									(int) inner_last.getY() - Globals.OVERLAY_MARKER_SIZE / 2,
-    									Globals.OVERLAY_MARKER_SIZE, Globals.OVERLAY_MARKER_SIZE);
+    							debug.fillRect((int) inner_last.getX() - AppConstants.OVERLAY_MARKER_SIZE / 2,
+    									(int) inner_last.getY() - AppConstants.OVERLAY_MARKER_SIZE / 2,
+    									AppConstants.OVERLAY_MARKER_SIZE, AppConstants.OVERLAY_MARKER_SIZE);
     						}
     					}
     
@@ -354,27 +354,27 @@ public class ShaderUtil {
     
     	for (LevelWall wall : entry.app.walls) {
     		if (wall.getAsset().equals("wood")) {
-                Rect r = SchemUtilities.schemToFrame(wall, location, Globals.PIXELS_PER_GRID());
+                Rect r = SchematicUtil.schemToFrame(wall, location);
                 
                 // if(!entry.app.inScreenSpace(r))
                 //     continue;
     			Point obj = r.center();
     
-    			Ellipse2D e2d2 = new Ellipse2D.Double(obj.getX() - Globals.LAMP_RADIUS, obj.getY() - Globals.LAMP_RADIUS,
-    					Globals.LAMP_RADIUS * 2, Globals.LAMP_RADIUS * 2);
+    			Ellipse2D e2d2 = new Ellipse2D.Double(obj.getX() - AppConstants.LAMP_RADIUS, obj.getY() - AppConstants.LAMP_RADIUS,
+    					AppConstants.LAMP_RADIUS * 2, AppConstants.LAMP_RADIUS * 2);
     
     			if (clipping)
     				visibility.add(new Area(e2d2));
     
     			if (shading) {
     				RadialGradientPaint rgp = new RadialGradientPaint(new Point2D.Double(obj.getX(), obj.getY()),
-    						(float) Globals.LAMP_RADIUS,
+    						(float) AppConstants.LAMP_RADIUS,
     						new float[] { 0.0f, 0.5f, 1.0f },
     						new Color[] { Color.BLACK, new Color(0, 0, 0, 220), new Color(0, 0, 0, 0) });
     
     				dispG.setPaint(rgp);
-    				dispG.fill(new Ellipse2D.Double(obj.getX() - Globals.LAMP_RADIUS, obj.getY() - Globals.LAMP_RADIUS,
-    						Globals.LAMP_RADIUS * 2, Globals.LAMP_RADIUS * 2));
+    				dispG.fill(new Ellipse2D.Double(obj.getX() - AppConstants.LAMP_RADIUS, obj.getY() - AppConstants.LAMP_RADIUS,
+    						AppConstants.LAMP_RADIUS * 2, AppConstants.LAMP_RADIUS * 2));
     			}
     		}
     	}
@@ -386,8 +386,7 @@ public class ShaderUtil {
 		Rectangle2D screenrect = new Rectangle2D.Double(0, 0, screen.getWidth(), screen.getHeight());
     	
 		for (LevelWall wall : entry.app.walls) {
-			Rect wallrect = SchemUtilities.schemToFrame(wall, location,
-					Globals.PIXELS_PER_GRID());
+			Rect wallrect = SchematicUtil.schemToFrame(wall, location);
 			
 				Rectangle2D re = new Rectangle2D.Double((int) Math.round(wallrect.left()),
 						(int) Math.round(wallrect.top()),

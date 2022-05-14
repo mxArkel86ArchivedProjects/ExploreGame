@@ -16,16 +16,16 @@ import org.javatuples.Pair;
 
 import gameObjects.Collider;
 import templates.IntPoint;
-import templates.Line;
 import templates.PathNode;
 import templates.Point;
+import templates.Vector;
 
 public class PathfindingUtil {
     public static List<Point> directPath(PathNode start, PathNode end, List<Collider> allWallsRaw) {
-        List<Collider> allWalls = allWallsRaw.stream().map(c -> CollisionUtil.subdivideCollider(c)).flatMap(List::stream)
-                .map(x -> new Collider(x.shift(-0.5, -0.5))).collect(Collectors.toList());
+        List<Collider> allWalls = allWallsRaw.stream().map(c -> CollisionUtil.subdivideCollider(c)).flatMap(List::stream).filter(x->x!=null)
+                .map(x -> x.shift(-0.5, -0.5)).map(x->new Collider(x.origin(), x.destination())).collect(Collectors.toList());
             
-        if (CollisionUtil.LineIntersectsWithColliders(new Line(start.getPoint().DPoint(), end.getPoint().DPoint()), allWalls)) {
+        if (CollisionUtil.LineIntersectsWithColliders(Vector.fromPoints(start.getPoint().DPoint(), end.getPoint().DPoint()), allWalls)) {
             return null;
         }
         return Arrays.asList(start.getPoint().DPoint(), end.getPoint().DPoint());
@@ -33,8 +33,8 @@ public class PathfindingUtil {
 
     public static List<Point> PathFindByWalls(PathNode start, PathNode end, int MAX_TRAVEL_DIST, int MAX_LEVELS, List<Collider> allWallsRaw) {
 
-        List<Collider> allWalls = allWallsRaw.stream().map(c -> CollisionUtil.subdivideCollider(c)).flatMap(List::stream)
-                .map(x->new Collider(x.shift(-0.5, -0.5))).collect(Collectors.toList());
+        List<Collider> allWalls = allWallsRaw.stream().map(c -> CollisionUtil.subdivideCollider(c)).flatMap(List::stream).filter(x->x!=null)
+                .map(x -> x.shift(-0.5,-0.5)).collect(Collectors.toList());
 
         Queue<PathNode> queue = new LinkedList<>();
         List<PathNode> visited = new ArrayList<>();
@@ -55,7 +55,7 @@ public class PathfindingUtil {
                     return null;
 
 
-                Line walk = new Line(current.getPoint().DPoint(), end.getPoint().DPoint());
+                Vector walk = Vector.fromPoints(current.getPoint().DPoint(), end.getPoint().DPoint());
                 boolean intersects = CollisionUtil.LineIntersectsWithColliders(walk, allWalls);
                 if(!intersects) {
                     List<Point> path = getPath(current, start).stream().map(p -> p.DPoint()).collect(Collectors.toList());
@@ -79,8 +79,8 @@ public class PathfindingUtil {
     
     public static List<PathNode> PathFindByWallsDebug(PathNode start, int MAX_TRAVEL_DIST, List<Collider> allWallsRaw) {
 
-        List<Collider> allWalls = allWallsRaw.stream().map(c -> CollisionUtil.subdivideCollider(c)).flatMap(List::stream)
-                .map(x->new Collider(x.shift(-0.5, -0.5))).collect(Collectors.toList());
+        List<Collider> allWalls = allWallsRaw.stream().map(c -> CollisionUtil.subdivideCollider(c)).flatMap(List::stream).filter(x->x!=null)
+                .map(x -> x.shift(-0.5, -0.5)).map(x->new Collider(x.origin(), x.destination())).collect(Collectors.toList());
         
         List<PathNode> nodes = new ArrayList<>();
         List<PathNode> visited = new ArrayList<>();
@@ -116,18 +116,18 @@ public class PathfindingUtil {
     public static List<PathNode> getNextNodes(PathNode p, int MAX_TRAVEL_DIST, List<Collider> allWalls) {
 
         List<Collider> collidersInRange = allWalls.stream().filter(c -> {
-            boolean b = Math.sqrt(Math.pow(p.getPoint().getX() - c.center().getX(), 2)
-                    + Math.pow(p.getPoint().getY() - c.center().getY(), 2)) < MAX_TRAVEL_DIST;
+            boolean b = Math.sqrt(Math.pow(p.getPoint().getX() - c.getCenter().getX(), 2)
+                    + Math.pow(p.getPoint().getY() - c.getCenter().getY(), 2)) < MAX_TRAVEL_DIST;
             return b;
         }).collect(Collectors.toList());
 
-        List<Point> corners = getCorners(allWalls).stream().filter(x->x.distance(p.getPoint().DPoint()) < MAX_TRAVEL_DIST)
+        List<Point> corners = getCorners(allWalls).stream().map(x->x.shift(1, 1)).filter(x->x.distance(p.getPoint().DPoint()) < MAX_TRAVEL_DIST)
                 .collect(Collectors.toList());
 
         List<PathNode> nextNodes = new ArrayList<>();
         for (Collider c : collidersInRange) {
             for (Point pt : getAdjacentPoints(c)) {
-                Line walk = new Line(p.getPoint().DPoint(), pt);
+                Vector walk = Vector.fromPoints(p.getPoint().DPoint(), pt);
                 boolean intersects = CollisionUtil.LineIntersectsWithColliders(walk, collidersInRange);
                 if (!intersects) {
                     nextNodes.add(new PathNode(new IntPoint((int) pt.getX(), (int) pt.getY()), p));
@@ -135,7 +135,7 @@ public class PathfindingUtil {
             }
         }
         for (Point pt : corners) {
-            Line walk = new Line(p.getPoint().DPoint(), pt);
+            Vector walk = Vector.fromPoints(p.getPoint().DPoint(), pt);
             boolean intersects = CollisionUtil.LineIntersectsWithColliders(walk, collidersInRange);
             if (!intersects) {
                 nextNodes.add(new PathNode(new IntPoint((int) pt.getX(), (int) pt.getY()), p));
@@ -144,20 +144,20 @@ public class PathfindingUtil {
         return nextNodes;
     }
     
-    public static List<Line> getCornerLines(List<Collider> colliders) {
+    public static List<Vector> getCornerLines(List<Collider> colliders) {
         //check if two lines make a corner
-        List<Line> cornerLines = new ArrayList<>();
+        List<Vector> cornerLines = new ArrayList<>();
         
         for (int i = 0; i < colliders.size(); i++) {
             for (int j = i + 1; j < colliders.size(); j++) {
-                    IntPoint p1 = new IntPoint(colliders.get(i).getP1());
-                    IntPoint p2 = new IntPoint(colliders.get(i).getP2());
+                    IntPoint p1 = new IntPoint(colliders.get(i).origin());
+                    IntPoint p2 = new IntPoint(colliders.get(i).destination());
 
-                    IntPoint p3 = new IntPoint(colliders.get(j).getP1());
-                    IntPoint p4 = new IntPoint(colliders.get(j).getP2());
+                    IntPoint p3 = new IntPoint(colliders.get(j).origin());
+                    IntPoint p4 = new IntPoint(colliders.get(j).destination());
 
-                    Line l1 = colliders.get(i);
-                    Line l2 = colliders.get(j);
+                    Vector l1 = colliders.get(i);
+                    Vector l2 = colliders.get(j);
 
                     IntPoint d1 = null;
                     IntPoint d2 = null;
@@ -186,13 +186,13 @@ public class PathfindingUtil {
                     } else {
                         continue;
                     }
-                    Line across = new Line(d1.DPoint(), d2.DPoint());
+                    Vector across = Vector.fromPoints(d1.DPoint(), d2.DPoint());
 
-                    Line l3 = new Line(across.center(), d3.DPoint());
+                    Vector l3 = Vector.fromPoints(across.getCenter(), d3.DPoint());
 
                     // check if the lines are parallel
-                    int slope = (int)(l1.dX()==0?Integer.MAX_VALUE:l1.dY()/l1.dX());
-                    int slope2 = (int)(l2.dX() == 0 ? Integer.MAX_VALUE : l2.dY() / l2.dX());
+                    int slope = (int)(l1.getDX()==0?Integer.MAX_VALUE:l1.getDY()/l1.getDX());
+                    int slope2 = (int)(l2.getDX() == 0 ? Integer.MAX_VALUE : l2.getDY() / l2.getDX());
                     
                     if(slope - slope2 < 0.00001 && slope - slope2 > -0.00001)
                         continue;
@@ -207,7 +207,7 @@ public class PathfindingUtil {
                     // double shift_1 = (-MaxWithSign(d1.getX() - d3.getX(), d1.getY() - d3.getY())) / 2;
                     // double shift_2 = (-MaxWithSign(d2.getX() - d4.getX(), d2.getY() - d4.getY())) / 2;
                     
-                    cornerLines.add(across.shift(l3.dX(), l3.dY()).shift(0.5, 0.5));
+                    cornerLines.add(across.shift(l3.getDX(), l3.getDY()));
                     //cornerLines.add(across);
 
             }
@@ -215,20 +215,20 @@ public class PathfindingUtil {
         return cornerLines;
     }
     
-    public static Point[] getAdjacentPoints(Line c) {
+    public static Point[] getAdjacentPoints(Vector c) {
         Point[] points = new Point[2];
         
         int[] sides = new int[] { -1, 1 };
         for (int z = 0; z < 2;z++) {
-            double angle = c.angle();
+            double angle = c.getAngle();
             double iangle = angle + Math.PI / 2;
             int side = sides[z];
             //get point perpendicular to the collider and a distance of length/2
-            double x = c.center().getX() + Math.cos(iangle) * c.length() / 2 * side;
-            double y = c.center().getY() + Math.sin(iangle) * c.length() / 2 * side;
+            double x = c.getCenter().getX() + Math.cos(iangle) * c.getMagnitude() / 2 * side;
+            double y = c.getCenter().getY() + Math.sin(iangle) * c.getMagnitude() / 2 * side;
             points[z] = new Point(x, y);
-            // Point p1 = new Point(c.center().x + side * Math.cos(iangle) * c.length() / 2,
-            //         c.center().y + side * Math.sin(iangle) * c.length() / 2);
+            // Point p1 = new Point(c.getCenter().x + side * Math.cos(iangle) * c.length() / 2,
+            //         c.getCenter().y + side * Math.sin(iangle) * c.length() / 2);
             // points[z] = p1;
         }
         return points;
@@ -293,7 +293,7 @@ public class PathfindingUtil {
         return depth;
     }
 
-    public static void displayPath(Graphics2D g, List<PathNode> layers, Point location, double GRIDSIZE,
+    public static void displayPath(Graphics2D g, List<PathNode> layers, Point location,
             Function<Pair<IntPoint, IntPoint>, Boolean> inMap) {
         g.setStroke(new BasicStroke(3));
 
@@ -315,8 +315,8 @@ public class PathfindingUtil {
                 else {
                     nodes.remove(j);
                     nodes.add(j, node.getParent());
-                    Point p1 = SchemUtilities.schemToFrame(new Point(node.getPoint().getX()+0.5, node.getPoint().getY()+0.5), location, GRIDSIZE);
-                    Point p2 = SchemUtilities.schemToFrame(new Point(node.getParent().getPoint().getX()+0.5, node.getParent().getPoint().getY()+0.5), location, GRIDSIZE);
+                    Point p1 = SchematicUtil.schemToFrame(new Point(node.getPoint().getX()+0.5, node.getPoint().getY()+0.5), location);
+                    Point p2 = SchematicUtil.schemToFrame(new Point(node.getParent().getPoint().getX()+0.5, node.getParent().getPoint().getY()+0.5), location);
                     g.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY());
                 }
                 
@@ -390,10 +390,10 @@ public class PathfindingUtil {
     // }
 
     public static List<Point> getCorners(List<Collider> colliders) {
-        List<Line> lines = getCornerLines(colliders);
+        List<Vector> lines = getCornerLines(colliders);
 
         List<Point> corners = new ArrayList<>();
-        for (Line l : lines) {
+        for (Vector l : lines) {
             corners.addAll(Arrays.stream(getAdjacentPoints(l)).toList());
         }
         return corners;

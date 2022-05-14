@@ -1,8 +1,8 @@
 package templates;
 
 public class DirectionVector {
-    double magnitude;
-    double angle;
+    protected double magnitude;
+    protected double angle;
 
     public DirectionVector(double magnitude, double angle) {
         this.magnitude = magnitude;

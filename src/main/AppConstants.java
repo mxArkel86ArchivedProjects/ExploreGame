@@ -1,6 +1,6 @@
 package main;
 
-public class Globals {
+public class AppConstants {
 	// WINDOW SETTINGS
 	public static final double REFRESH_RATE = 60;
 	public static int WINDOW_WIDTH_INITIAL = 1920;
@@ -34,7 +34,6 @@ public class Globals {
 	public static final int DASH_DURATION = 180;
 	public static final double DASH_PERCENT_FALLOFF_SPEED = 0.04;
 	public static final int DASH_DELAY = 100;
-	public static final int ASSET_MENU_HORIZONTAL = 10;
 	public static final double BULLET_SPEED = 0.4;
 	// LIGHTING
 	public static final double FLASHLIGHT_FOV = 0.7;

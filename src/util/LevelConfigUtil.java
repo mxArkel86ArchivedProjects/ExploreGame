@@ -11,7 +11,6 @@ import java.awt.Color;
 import gameObjects.Collider;
 import gameObjects.LevelTile;
 import gameObjects.LevelWall;
-import gameObjects.ResetBox;
 import main.entry;
 import templates.Point;
 import templates.Size;
@@ -24,7 +23,7 @@ public class LevelConfigUtil {
             w.write("-=-=-=-= output =-=-=-=-=-\n\n");
             w.write("[collision]\n");
             for(Collider c : entry.app.newColliders){
-                w.write(String.format("%d,%d,%d,%d\n",(int)c.getX1(), (int)c.getY1(), (int)(c.getX2()),(int)(c.getY2())));
+                w.write(String.format("%d,%d,%d,%d\n",(int)c.origin().getX(), (int)c.origin().getY(), (int)(c.origin().getX()),(int)(c.origin().getY())));
             }
             w.write("\n[walls]\n");
             for (LevelWall p : entry.app.newWalls) {
@@ -128,19 +127,6 @@ public class LevelConfigUtil {
                     double y1 = Double.parseDouble(args[2]);
                     Point p =  new Point(x1, y1);
                     entry.app.checkpoints.put(name, p);
-                 }else if(category.contentEquals("resetbox")){
-                    String name = args[0];
-                    double x1 = Double.parseDouble(args[1]);
-                    double y1 = Double.parseDouble(args[2]);
-                    double x2 = Double.parseDouble(args[3]);
-                    double y2 = Double.parseDouble(args[4]);
-                    
-                    double x = Math.min(x1, x2);
-                    double y = Math.min(y1, y2);
-                    double w = Math.abs(x1-x2);
-                    double h = Math.abs(y1-y2);
-                    ResetBox b = new ResetBox(x, y, w, h, name);
-                    entry.app.resetboxes.add(b);
                  }
 
 

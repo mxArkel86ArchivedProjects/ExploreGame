@@ -6,53 +6,27 @@ import java.util.List;
 import org.javatuples.Pair;
 
 import gameObjects.Collider;
-import main.Globals;
-import templates.CalcVector;
+import gameObjects.entities.Entity;
+import main.AppConstants;
+import templates.Vector;
 import templates.CollisionProps;
 import templates.DirectionVector;
-import templates.Line;
 import templates.Point;
 import templates.Rect;
 
 public class CollisionUtil {
 
-	public static Pair<Point,Point> sphereCollision(Point p1, double r1, Point p2, double r2, DirectionVector d1,
-			DirectionVector d2) {
-		double distReq = r1 + r2;
-		Point pos1 = p1;
-		Point pos2 = p1.shift(d1.getDX(), d1.getDY());
-		Line l1 = new Line(pos1, pos2);
-		
-		Point pos3 = p2;
-		Point pos4 = p2.shift(d2.getDX(), d2.getDY());
-		Line l2 = new Line(pos3, pos4);
-
-		Point pout1 = MathUtil.ClosestPointOnLine(l2, pos1);
-		if (pos1.distance(pout1) < distReq) {
-			return Pair.with(pos1, pout1);
-		}
-		Point out2 = MathUtil.ClosestPointOnLine(l2, pos2);
-		if (pos2.distance(out2) < distReq)
-		{
-			return Pair.with(pos2, out2);
-		}
-		Point pout3 = MathUtil.ClosestPointOnLine(l1, pos3);
-		if (pos3.distance(pout3) < distReq)
-		{
-			return Pair.with(pos3, pout3);
-		}
-		Point pout4 = MathUtil.ClosestPointOnLine(l1, pos4);
-		if (pos4.distance(pout4) < distReq)
-		{
-			return Pair.with(pos4, pout4);
-		}
-		return null;
+	public static boolean sphereCollision(Entity a, Entity b) {
+		Vector v1 = a.getVector();
+		Vector v2 = b.getVector();
+		double dist = MathUtil.shortestDistanceBetweenTwoLines(v1, v2);
+		return dist < a.getRadius() + b.getRadius();
 	}
 
 
 	
-	public static boolean LineSphereCollision(Line line, Point sphereCenter, double sphereRadius) {
-		Point closestPoint = MathUtil.ClosestPointOnLine(line, sphereCenter);
+	public static boolean LineSphereCollision(Vector line, Point sphereCenter, double sphereRadius) {
+		Point closestPoint = MathUtil.ClosestPointOnLine(Vector.fromPoints(line.origin(), line.destination()), sphereCenter);
 		double distance = closestPoint.distance(sphereCenter);
 		return distance <= sphereRadius;
 	}
@@ -74,8 +48,8 @@ public class CollisionUtil {
 	}
 
 	public static List<Collider> subdivideCollider(Collider c) {
-		Point p1 = c.getP1();
-		Point p2 = c.getP2();
+		Point p1 = c.origin();
+		Point p2 = c.destination();
 
 		double dist = Math.max(Math.abs(p1.getX() - p2.getX()), Math.abs(p1.getY() - p2.getY()));
 
@@ -89,7 +63,7 @@ public class CollisionUtil {
 		return new_colliders;
 	}
 
-	public static boolean LineIntersectsWithColliders(Line line, List<Collider> colliders) {
+	public static boolean LineIntersectsWithColliders(Vector line, List<Collider> colliders) {
 		for (Collider collider : colliders) {
 			if (LineLineIntersection(line, collider)) {
 				return true;
@@ -98,15 +72,15 @@ public class CollisionUtil {
 		return false;
 	}
 	//check if two line segments intersect
-	public static boolean LineLineIntersection(Line l1, Line l2) {
-		double x1 = l1.getP1().getX();
-		double y1 = l1.getP1().getY();
-		double x2 = l1.getP2().getX();
-		double y2 = l1.getP2().getY();
-		double x3 = l2.getP1().getX();
-		double y3 = l2.getP1().getY();
-		double x4 = l2.getP2().getX();
-		double y4 = l2.getP2().getY();
+	public static boolean LineLineIntersection(Vector l1, Vector l2) {
+		double x1 = l1.origin().getX();
+		double y1 = l1.origin().getY();
+		double x2 = l1.destination().getX();
+		double y2 = l1.destination().getY();
+		double x3 = l2.origin().getX();
+		double y3 = l2.origin().getY();
+		double x4 = l2.destination().getX();
+		double y4 = l2.destination().getY();
 		
 		double denom = (x1-x2)*(y3-y4) - (y1-y2)*(x3-x4);
 		if (denom == 0) {
