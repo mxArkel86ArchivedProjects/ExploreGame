@@ -123,14 +123,13 @@ public class Application extends JPanel {
 	boolean EDIT_MODE = false;
 	boolean CLIP_MODE = false;
 	boolean OVERLAY_MODE = false;
-	boolean SHADOWS_MODE = false;
 	boolean SHOW_ASSETS_MENU = false;
 	boolean FLASHLIGHT_ENABLED = false;
 	boolean ENEMY_FOLLOW = false;
 
 	GraphicsConfiguration gconfig = null;
 
-	List<Double> debug_vals = Arrays.asList(0.0, 0.0, 0.0);
+	public List<Double> debug_vals = Arrays.asList(0.0, 0.0, 0.0);
 	int debug_val_selection = 0;
 
 	List<Triplet<String, Runnable, Callable<String>>> debug_opts = new ArrayList<>();
@@ -253,11 +252,6 @@ public class Application extends JPanel {
 		}, () -> {
 			return String.valueOf(LIGHT_MODE);
 		}));
-		debug_opts.add(new Triplet<String, Runnable, Callable<String>>("Toggle Shadows [%s]", () -> {
-			SHADOWS_MODE = !SHADOWS_MODE;
-		}, () -> {
-			return String.valueOf(SHADOWS_MODE);
-		}));
 		debug_opts.add(new Triplet<String, Runnable, Callable<String>>("Toggle Overlay [%s]", () -> {
 			OVERLAY_MODE = !OVERLAY_MODE;
 		}, () -> {
@@ -361,11 +355,11 @@ public class Application extends JPanel {
 			return;
 		}
 
-		Graphics2D g2 = (Graphics2D) display.getGraphics();
+		Graphics2D g2 = (Graphics2D) overlay.getGraphics();
 		g2.setBackground(new Color(0, 0, 0, 0));
 		g2.clearRect(0, 0, overlay.getWidth(), overlay.getHeight());
 
-		playerCollisionAndMovementCode(g2);
+		playerCollisionAndMovementCode();
 
 		updateEnemyAI();
 
@@ -457,9 +451,11 @@ public class Application extends JPanel {
 	public Rect LEVEL_SCREEN_SPACE;
 	VolatileImage display = null;
 	VolatileImage overlay = null;
+	VolatileImage light_mask = null;
 
 	AlphaComposite ac_def = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f);
 	AlphaComposite ac = AlphaComposite.getInstance(AlphaComposite.SRC_IN, 1.0f);
+	
 
 	@Override
 	public void paint(Graphics g1) {
@@ -478,22 +474,28 @@ public class Application extends JPanel {
 				Math.min(this.getHeight(),
 						LEVEL_SCHEM_SPACE.bottom() * AppConstants.PIXELS_PER_GRID() - location.getY()));
 
-		GraphicsContext gc = new GraphicsContext((Graphics2D)display.getGraphics());
-		GraphicsContext overlayG = new GraphicsContext((Graphics2D) overlay.getGraphics());
+		GraphicsContext gc = new GraphicsContext((Graphics2D) display.getGraphics(), display.getWidth(), display.getHeight());
+		GraphicsContext lightMaskContext = new GraphicsContext((Graphics2D) light_mask.getGraphics(), light_mask.getWidth(), light_mask.getHeight());
+		GraphicsContext overlayContext = new GraphicsContext((Graphics2D) overlay.getGraphics(), overlay.getWidth(), overlay.getHeight());
 
-		gc.clear(0,0,display.getWidth(),display.getHeight());
-		overlayG.clear(0, 0, overlay.getWidth(), overlay.getHeight());
+		
+
+		Graphics2D g = (Graphics2D) gc.getGraphics();
+		//g.setComposite(ac_def);
+
+		gc.clear();
+		lightMaskContext.clear();
 
 		panelGraphics.setBackground(Color.BLACK);
 		panelGraphics.clearRect(0, 0, this.getWidth(), this.getHeight());
-
 		
-		if (LIGHT_MODE || SHADOWS_MODE) {
-			Graphics2D g = (Graphics2D)overlayG.getGraphics();
-			g.setComposite(ac_def);
 
-			Shape mask = ShaderUtil.LightMask(gc, overlayG, SHADOWS_MODE, LIGHT_MODE, FLASHLIGHT_ENABLED);
+		if (LIGHT_MODE) {
+			Shape mask = ShaderUtil.LightMask(lightMaskContext, overlayContext, FLASHLIGHT_ENABLED);
+			
 			g.setClip(mask);
+			g.drawImage(light_mask, 0, 0, null);
+			
 
 			g.setComposite(ac);
 
@@ -501,10 +503,10 @@ public class Application extends JPanel {
 
 			g.setComposite(ac_def);
 			g.setClip(null);
-
 		} else {
 			RawGame(gc);
 		}
+
 		if (SHOW_GRID)
 			DebugOverlay.DrawGrid(gc, location, LEVEL_SCHEM_SPACE);
 
@@ -522,8 +524,11 @@ public class Application extends JPanel {
 
 			DebugOverlay.DrawColliders(gc, location, subdivided_colliders);
 
-			gc.getGraphics().drawImage(overlay, 0, 0, null);
+			gc.drawImage(overlay, 0, 0, this.getWidth(), this.getHeight());
+
 		}
+
+		DebugOverlay.DrawStatsOverlay(g, playerSchemPos().toString(), debug_vals.stream().map(x->x.toString()).collect(Collectors.joining(", ")));
 
 		if (SHOW_ASSETS_MENU) {
 			DebugOverlay.DrawAssetLibrary(gc, assets, asset_library_selection);
@@ -532,6 +537,7 @@ public class Application extends JPanel {
 		}
 
 		drawCursor(gc);
+		
 
 		panelGraphics.drawImage(display, 0, 0, this.getWidth(), this.getHeight(), null);
 	}
@@ -555,6 +561,7 @@ public class Application extends JPanel {
 
 			display = gconfig.createCompatibleVolatileImage((int) width, (int) height, ic, Transparency.TRANSLUCENT);
 			overlay = gconfig.createCompatibleVolatileImage((int) width, (int) height, ic, Transparency.TRANSLUCENT);
+			light_mask = gconfig.createCompatibleVolatileImage((int) width, (int) height, ic, Transparency.TRANSLUCENT);
 		} catch (AWTException e) {
 			e.printStackTrace();
 		}
@@ -795,9 +802,9 @@ public class Application extends JPanel {
 		return false;
 	}
 
-	public DirectionVector playerNextPosition(Graphics2D g, DirectionVector velocity, Point pos) {
+	public DirectionVector playerNextPosition(DirectionVector velocity, Point pos) {
 		double r = AppConstants.PLAYER_SIZE / AppConstants.PIXELS_PER_GRID() / 2;
-		double detection_radius = 1.0 * r;
+		double detection_radius = 1.15 * r;
 
 		Point schemPt = SchematicUtil.frameToSchem(player_screen_pos, location);
 
@@ -815,7 +822,9 @@ public class Application extends JPanel {
 		}).collect(Collectors.toList());
 
 		if (eligible_colliders.size() == 0)
-			return velocity;
+			return null;
+		
+		Graphics2D g = (Graphics2D) overlay.getGraphics();
 
 		for (Collider c : eligible_colliders) {
 
@@ -830,7 +839,8 @@ public class Application extends JPanel {
 		}
 
 		boolean colliding = false;
-
+	
+		
 		for (Collider c : eligible_colliders) {
 			// Collider c = eligible_colliders.get(0);
 
@@ -839,12 +849,16 @@ public class Application extends JPanel {
 			Vector PPosV = Vector.fromPoints(linept, schemPt);
 
 			// double angle = MathUtil.getAngle(PMV, c);
+			// double factor = 1/Math.sin(angle==0?0.00001:angle);
+			//Vector modPMV = PMV.scale(factor);
+			// double angle = MathUtil.getAngle(PMV, c);
 			Vector perpendicular = MathUtil.perpendicularProjection(PMV, c);
 			Vector parallel = MathUtil.parallelProjection(PMV, c);
 
 			// drawVector(g, PMV, Color.RED);
 			// drawVector(g, perpendicular, Color.BLUE);
 			// drawVector(g, parallel, Color.ORANGE);
+			
 
 			Point cornerpoint = null;
 			if (linept.equals(c.origin()))
@@ -855,30 +869,28 @@ public class Application extends JPanel {
 			if (cornerpoint != null) {
 				Vector cvec = Vector.fromPoints(cornerpoint, schemPt);
 				cvec.setMagnitude(r * 1);
-
-				DrawUtil.drawVector(g, location, cvec, Color.GREEN);
-
+				
+				
 				setPlayerPosFromSchem(cvec.destination());
-				return velocity;
+				
+				return null;
 			} else {
 				if (MathUtil.dotProduct(PMV.directionComponent(), PPosV.directionComponent()) <= 0) {
 					speed = speed.addVector(parallel.scale(1, -1));
 					speed = speed.subtractVector(perpendicular.scale(1, -1));
 					colliding = true;
+					setPlayerPosFromSchem(perpendicular.withMagnitude(r).scale(-1, -1).origin());
 				}
-				// setPlayerPosFromSchem(perpendicular.withMagnitude(r).scale(-1,-1).origin());
 			}
 		}
 
 		if (colliding)
 			return speed;
 		else
-			return velocity;
+			return null;
 	}
 
-	public void playerCollisionAndMovementCode(Graphics2D g) {
-		g.setStroke(new BasicStroke(4));
-
+	public void playerCollisionAndMovementCode() {
 		velocity = velocity.addVector(intent.multiply(0.14));
 
 		if (velocity.getMagnitude() > AppConstants.PLAYER_MAX_SPEED)
@@ -895,9 +907,14 @@ public class Application extends JPanel {
 			return;
 		}
 
-		DirectionVector c1 = playerNextPosition(g, velocity, playerSchemPos());
+		DirectionVector c1 = playerNextPosition(velocity, playerSchemPos());
 
-		location = location.shift(c1.getDX(), -c1.getDY());
+		if (c1 != null) {
+			location = location.shift(c1.getDX(), -c1.getDY());
+			//velocity = c1;
+		}
+		else
+			location = location.shift(velocity.getDX(), -velocity.getDY());
 	}
 
 	public Point playerSchemPos() {

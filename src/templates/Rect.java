@@ -91,7 +91,12 @@ public class Rect {
 		return topleft.getX() + size.getWidth();
 	}
 
-    public Size getSize() {
-        return size;
-    }
+	public Size getSize() {
+		return size;
+	}
+	
+	public Rect scale(double factor) {
+		Point center = center();
+		return new Rect(center.getX() - size.getWidth() * factor / 2, center.getY() - size.getHeight() * factor / 2, center.getX() + size.getWidth() * factor / 2, center.getY() + size.getHeight() * factor / 2);
+	}
 }

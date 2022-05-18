@@ -61,12 +61,10 @@ public class DrawUtil {
     	}
     }
 
-    public static void drawVector(Graphics2D g, Point location, Vector v1, Color red) {
+    public static void drawVector(GraphicsContext c, Point location, Vector v1, Color red) {
     	// CalcVector vector = v1;
-    	g.setStroke(new BasicStroke(2));
-    	g.setColor(red);
     	Vector g_line = SchematicUtil.schemToFrame(v1, location);
-    	g.drawLine((int) g_line.origin().getX(), (int) g_line.origin().getY(), (int) g_line.destination().getX(), (int) g_line.destination().getY());
+    	c.drawLine(g_line.origin().getX(), g_line.origin().getY(),  g_line.destination().getX(), g_line.destination().getY(), red, 3);
     
     	Point dst = v1.destination();
     
@@ -77,7 +75,7 @@ public class DrawUtil {
     	Vector l_line = SchematicUtil.schemToFrame(Vector.fromPoints(left.origin(), left.destination()), location);
     	Vector r_line = SchematicUtil.schemToFrame(Vector.fromPoints(right.origin(), right.destination()), location);
     
-    	g.drawLine((int) l_line.origin().getX(), (int) l_line.origin().getY(), (int) l_line.destination().getX(), (int) l_line.destination().getY());
-    	g.drawLine((int) r_line.origin().getX(), (int) r_line.origin().getY(), (int) r_line.destination().getX(), (int) r_line.destination().getY());
+    	c.drawLine(l_line.origin().getX(), l_line.origin().getY(), l_line.destination().getX(), l_line.destination().getY(), red, 3);
+    	c.drawLine(r_line.origin().getX(), r_line.origin().getY(), r_line.destination().getX(),  r_line.destination().getY(), red, 3);
     }
 }

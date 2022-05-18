@@ -4,9 +4,13 @@ import java.awt.*;
 
 public class GraphicsContext {
     private Graphics2D g;
+    private int width;
+    private int height;
 
-    public GraphicsContext(Graphics2D g) {
+    public GraphicsContext(Graphics2D g, int width, int height) {
         this.g = g;
+        this.width = width;
+        this.height = height;
     }
 
     public Graphics2D getGraphics() {
@@ -16,6 +20,11 @@ public class GraphicsContext {
     public void clear(int x, int y, int width, int height) {
         g.setBackground(new Color(0, 0, 0, 0));
         g.clearRect(x, y, width, height);
+    }
+
+    public void clear() {
+        g.setBackground(new Color(0, 0, 0, 0));
+        g.clearRect(0, 0, width, height);
     }
     
     public void drawArc(double x, double y, double width, double height, double startAngle, double arcAngle, Color c,

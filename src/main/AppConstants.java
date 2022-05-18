@@ -8,7 +8,7 @@ public class AppConstants {
 
 	// IMAGE SETTINGS
 	public static final int PIXELS_PER_GRID() {
-		return (int) (64.0);
+		return (int) (74);
 	}
 
 	public static final int PIXELS_PER_GRID_IMPORT() {
@@ -18,7 +18,7 @@ public class AppConstants {
 	public static final int PATH_BUFFER = 6;
 	public static final int PIXELS_RESIZE = 64;
 	// APPLICATION PARAMS
-	public static final double PLAYER_SIZE = 50;
+	public static final double PLAYER_SIZE = 68;
 	public static final double PLAYER_ACCELERATION = 0.1;
 	public static final double PLAYER_MAX_SPEED = 2.8;
 	public static final double PLAYER_FRICTION = 0.1;
@@ -37,7 +37,7 @@ public class AppConstants {
 	public static final double BULLET_SPEED = 0.4;
 	// LIGHTING
 	public static final double FLASHLIGHT_FOV = 0.7;
-	public static final int INNER_RADIUS = 250;
+	public static final int INNER_RADIUS = 370;
 	public static final int FLASHLIGHT_RANGE = 540;
 	public static final int OVERLAY_MARKER_SIZE = 10;
 	public static final int LAMP_RADIUS = 180;
