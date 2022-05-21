@@ -7,6 +7,10 @@ import javax.swing.event.MouseInputListener;
 
 import templates.Point;
 
+import org.lwjgl.input.Controller;
+import org.lwjgl.input.Controllers;
+import org.lwjgl.util.input.ControllerAdapter;
+
 
 public class Peripherals implements ComponentListener, KeyListener, MouseInputListener {
 	HashMap<Integer, Boolean> keyRegister = new HashMap<Integer, Boolean>();
@@ -16,32 +20,15 @@ public class Peripherals implements ComponentListener, KeyListener, MouseInputLi
 	String typed_str = "";
 	boolean type_enable = false;
 	public boolean mouse_state = false;
+
+	ControllerAdapter controllerAdapter;
 	
-	
-//	public Controller[] getControllers() {
-//		return ControllerEnvironment.getDefaultEnvironment().getControllers();
-//	}
-//	
-//	
-//	public void ControllerTick(Controller controller) {
-//		if(controller!=null) {
-//		Event event = new Event();
-//		    /* Remember to poll each one */
-//		    controller.poll();
-//
-//		    /* Get the controllers event queue */
-//		    EventQueue queue = controller.getEventQueue();
-//
-//		    /* For each object in the queue */
-//		 while (queue.getNextEvent(event)) {
-//		        /* Get event component */
-//				Component comp = event.getComponent();
-//				String input_name = comp.getName();
-//				System.out.println(input_name);
-//		 }
-//		
-//		}
-//	}
+	public Peripherals() {
+		Controller c = Controllers.getController(0);
+		for(int i = 0; i < c.getButtonCount(); i++) {
+			System.out.println("button(" + i + ")=" + c.getButtonName(i));
+		}
+	}
 	
 	@Override
 	public void componentResized(ComponentEvent e) {

@@ -5,18 +5,24 @@ import java.awt.geom.AffineTransform;
 import java.io.File;
 import java.awt.*;
 import java.io.IOException;
+import java.io.InputStream;
 
 import javax.imageio.ImageIO;
 
 public class ImageUtil {
-	public static BufferedImage getImage(String path) {
+	public static BufferedImage getImage(String name) {
+		
 		try {
-			BufferedImage image = ImageIO.read(new File(path));
+			InputStream stream = ResourceUtil.inputStreamFromResource("/images/" + name);
+			if(stream==null)
+				return null;
+			BufferedImage image = ImageIO.read(stream);
+			stream.close();
 			return image;
 		} catch (IOException e) {
 			e.printStackTrace();
+			return null;
 		}
-		return null;
 	}
 
 	public static VolatileImage getVolatileImage(String path, GraphicsConfiguration gc) {

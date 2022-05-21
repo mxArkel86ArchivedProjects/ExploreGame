@@ -7,7 +7,6 @@ import java.awt.Toolkit;
 import java.awt.image.BufferedImage;
 import java.util.Timer;
 
-import javax.sound.sampled.AudioSystem;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 //import net.java.games.input.Controller;
@@ -16,7 +15,7 @@ public class entry {
 public static JFrame frame;
 public static Application app;
 public static Peripherals peripherals;
-public static SoundManager soundManager;
+//public static SoundManager soundManager;
 public static Timer t;
 public static long tick = 0;
 
@@ -25,7 +24,7 @@ public static void main(String[] args) {
 		t = new Timer();
 		app = new Application();
 		peripherals = new Peripherals();
-		soundManager = new SoundManager();
+		//soundManager = new SoundManager();
 
 		frame.setTitle("Explore Game");
 		int w = AppConstants.WINDOW_WIDTH_INITIAL;

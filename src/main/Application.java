@@ -50,10 +50,11 @@ import templates.Point;
 import templates.DirectionVector;
 import templates.Rect;
 import templates.Size;
+import util.AssetLoader;
 import util.CollisionUtil;
 import util.DrawUtil;
 import util.ImageUtil;
-import util.LevelConfigUtil;
+import util.LevelLoader;
 import util.MathUtil;
 import util.PathfindingUtil;
 import util.SchematicUtil;
@@ -183,32 +184,9 @@ public class Application extends JPanel {
 			}
 		}
 
-		HashMap<String, Size> assetSizes = new HashMap<>();
+		HashMap<String, Size> assetSizes = AssetLoader.LoadAssets();
 
-		for (final File fileEntry : new File("assets").listFiles()) {
-			if (fileEntry.isFile()) {
-				String extension = fileEntry.getName().substring(fileEntry.getName().indexOf(".") + 1);
-				if (!extension.equalsIgnoreCase("png") && !extension.equalsIgnoreCase("jpg")) {
-					continue;
-				}
-				String name = fileEntry.getName().substring(0, fileEntry.getName().indexOf("."));
-				BufferedImage img = ImageUtil.getImage(fileEntry.getPath());
-				Size size = new Size(img.getWidth() / AppConstants.PIXELS_PER_GRID_IMPORT(),
-						img.getHeight() / AppConstants.PIXELS_PER_GRID_IMPORT());
-				assetSizes.put(name,
-						size);
-				if (selectasset.length() == 0)
-					selectasset = name;
-				BufferedImage resize = ImageUtil.resize(img,
-						(int) (img.getWidth() * AppConstants.PIXELS_RESIZE * 1.0f
-								/ AppConstants.PIXELS_PER_GRID_IMPORT()),
-						(int) (img.getHeight() * AppConstants.PIXELS_RESIZE * 1.0f
-								/ AppConstants.PIXELS_PER_GRID_IMPORT()));
-				assets.put(name, new ImageAsset(resize, size));
-			}
-		}
-
-		LevelConfigUtil.loadLevel(assetSizes);
+		LevelLoader.loadLevel(assetSizes);
 
 		if (checkpoints.containsKey("start"))
 			setPlayerPosFromSchem(checkpoints.get("start"));
@@ -276,7 +254,7 @@ public class Application extends JPanel {
 			return String.valueOf(FLASHLIGHT_ENABLED);
 		}));
 		debug_opts.add(new Triplet<String, Runnable, Callable<String>>("Save Level", () -> {
-			LevelConfigUtil.saveLevel();
+			LevelLoader.saveLevel();
 			levelUpdate();
 		}, () -> {
 			return "";
