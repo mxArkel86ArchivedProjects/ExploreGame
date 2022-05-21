@@ -110,8 +110,6 @@ public class Application extends JPanel {
 	/*
 	 * MISC
 	 */
-	boolean typing = false;
-	String typing_str = "";
 	long reassign_tick = 0;
 
 	/*
@@ -344,16 +342,10 @@ public class Application extends JPanel {
 	 * BACKEND GAME CODE
 	 */
 	public void onTick() {
-		inputUpdate(true, typing, !typing);
+		inputUpdate();
 		if (entry.peripherals.mouse_state)
 			mouseDown(entry.peripherals.mousePos());
 
-		if (typing) {
-			if (entry.peripherals.keysTypedB()) {
-				typing_str += entry.peripherals.keysTyped();
-			}
-			return;
-		}
 
 		Graphics2D g2 = (Graphics2D) overlay.getGraphics();
 		g2.setBackground(new Color(0, 0, 0, 0));
@@ -481,7 +473,6 @@ public class Application extends JPanel {
 		
 
 		Graphics2D g = (Graphics2D) gc.getGraphics();
-		//g.setComposite(ac_def);
 
 		gc.clear();
 		lightMaskContext.clear();
@@ -524,9 +515,14 @@ public class Application extends JPanel {
 
 			DebugOverlay.DrawColliders(gc, location, subdivided_colliders);
 
+			DebugOverlay.DrawNewGameObjectOverlay(gc, location);
+
 			gc.drawImage(overlay, 0, 0, this.getWidth(), this.getHeight());
 
 		}
+
+		if(EDIT_MODE)
+			DebugOverlay.DrawEditModeOverlays(gc, location, select_point_store, selection_type, assets, selectasset);
 
 		DebugOverlay.DrawStatsOverlay(g, playerSchemPos().toString(), debug_vals.stream().map(x->x.toString()).collect(Collectors.joining(", ")));
 
@@ -536,8 +532,10 @@ public class Application extends JPanel {
 			DebugOverlay.DrawDebugDropdown(gc, debug_opts, debug_dropdown_selection);
 		}
 
-		drawCursor(gc);
 		
+
+		
+		drawCursor(gc);
 
 		panelGraphics.drawImage(display, 0, 0, this.getWidth(), this.getHeight(), null);
 	}
@@ -599,24 +597,21 @@ public class Application extends JPanel {
 			} else if (selection_type == 1) {
 				ImageAsset a = assets.get(selectasset);
 
-				Rect r = new Rect(select_point_1.getX(), select_point_1.getY(), a.size.getWidth(),
-						a.size.getHeight());
+				Rect r = new Rect(select_point_1, a.size);
 
 				LevelWall c = new LevelWall(r.left(), r.top(), r.getWidth(), r.getHeight(), 0.0f, selectasset);
 				newWalls.add(c);
 			} else if (selection_type == 2) {
 				ImageAsset a = assets.get(selectasset);
 
-				Rect r = new Rect(select_point_1.getX(), select_point_1.getY(), a.size.getWidth(),
-						a.size.getHeight());
+				Rect r = new Rect(select_point_1, a.size);
 
 				LevelTile c = new LevelTile(r.left(), r.top(), r.getWidth(), r.getHeight(), 0.0f, selectasset);
 				newTiles.add(c);
 			} else if (selection_type == 0) {
 				ImageAsset a = assets.get(selectasset);
 
-				Rect r = new Rect(select_point_1.getX(), select_point_1.getY(), a.size.getWidth(),
-						a.size.getHeight());
+				Rect r = new Rect(select_point_1, a.size);
 
 				Collider c = new Collider(r.left(), r.top(), r.getWidth(), r.getHeight());
 				newColliders.add(c);
@@ -664,15 +659,7 @@ public class Application extends JPanel {
 	 * INPUT MANAGEMENT
 	 * Set local variables and toggles based on peripheral inputs
 	 */
-	void inputUpdate(boolean essentials, boolean typing_en, boolean game) {
-
-		if (essentials) {
-			if (entry.peripherals.KeyToggled(KeyEvent.VK_PERIOD)) {
-				typing = !typing;
-				if (!typing)
-					typing_str = "";
-				entry.peripherals.typingEnable(typing);
-			}
+	void inputUpdate() {
 
 			if (entry.peripherals.KeyToggled(KeyEvent.VK_RIGHT)) {
 				if (asset_library_selection < assets.size() - 1)
@@ -718,28 +705,10 @@ public class Application extends JPanel {
 				} else
 					debug_opts.get(debug_dropdown_selection).getValue1().run();
 			}
-		}
+		
 
-		if (typing_en) {
+		
 
-			if (entry.peripherals.KeyToggled(KeyEvent.VK_ENTER)) {
-				if (typing_str.length() > 0) {
-					typing = false;
-					typing_str = typing_str.strip();
-					selectasset = typing_str;
-
-					typing_str = "";
-					entry.peripherals.typingEnable(false);
-				}
-			}
-			if (entry.peripherals.KeyToggled(KeyEvent.VK_COMMA)) {
-				if (typing_str.length() > 0) {
-					typing_str = typing_str.substring(0, typing_str.length() - 1);
-				}
-			}
-		}
-
-		if (game) {
 			looking_angle = (Math.atan2(
 					(player_screen_pos.getY()) - entry.peripherals.mousePos().getY(),
 					(player_screen_pos.getX()) - entry.peripherals.mousePos().getX())) % (2 * Math.PI)
@@ -766,7 +735,7 @@ public class Application extends JPanel {
 			if (entry.peripherals.KeyToggled(KeyEvent.VK_U)) {
 				((Gun) weapon).mag = new Magazine(45, "GUN TEST NAME", 0.22);
 			}
-		}
+		
 	}
 
 	/*
@@ -804,7 +773,7 @@ public class Application extends JPanel {
 
 	public DirectionVector playerNextPosition(DirectionVector velocity, Point pos) {
 		double r = AppConstants.PLAYER_SIZE / AppConstants.PIXELS_PER_GRID() / 2;
-		double detection_radius = 1.15 * r;
+		double detection_radius = 1.1 * r;
 
 		Point schemPt = SchematicUtil.frameToSchem(player_screen_pos, location);
 
@@ -871,7 +840,10 @@ public class Application extends JPanel {
 				cvec.setMagnitude(r * 1);
 				
 				
-				setPlayerPosFromSchem(cvec.destination());
+				if (MathUtil.dotProduct(PMV.directionComponent(),
+						Vector.fromPoints(cornerpoint, schemPt).directionComponent())<=0) {
+							setPlayerPosFromSchem(cvec.destination());
+				}
 				
 				return null;
 			} else {
@@ -879,7 +851,7 @@ public class Application extends JPanel {
 					speed = speed.addVector(parallel.scale(1, -1));
 					speed = speed.subtractVector(perpendicular.scale(1, -1));
 					colliding = true;
-					setPlayerPosFromSchem(perpendicular.withMagnitude(r).scale(-1, -1).origin());
+					setPlayerPosFromSchem(perpendicular.withMagnitude(r).origin());
 				}
 			}
 		}

@@ -50,8 +50,8 @@ public class SchematicUtil {
 	}
 	
 	public static IntPoint frameToSchemInt(Point p, Point location) {
-    	return new IntPoint((int)Math.round((p.getX() + location.getX()) / AppConstants.PIXELS_PER_GRID()),
-    			(int)Math.round((p.getY() + location.getY()) / AppConstants.PIXELS_PER_GRID()));
+    	return new IntPoint((int)Math.floor((p.getX() + location.getX()) / AppConstants.PIXELS_PER_GRID()),
+    			(int)Math.floor((p.getY() + location.getY()) / AppConstants.PIXELS_PER_GRID()));
     }
     
 }

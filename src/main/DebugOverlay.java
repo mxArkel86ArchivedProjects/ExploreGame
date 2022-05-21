@@ -162,20 +162,25 @@ public class DebugOverlay {
 					(int) screenSpace.getWidth(), (int) screenSpace.getHeight());
     }
 
-    public static void DrawEditModeOverlays(Graphics2D g, Point location, Point store_point, Point new_point, int selection_type, HashMap<String, ImageAsset> assets, String selected_asset) {
-			if (selection_type == 0) {
+    public static void DrawEditModeOverlays(GraphicsContext c, Point location, Point store_point,
+            int selection_type, HashMap<String, ImageAsset> assets, String selected_asset) {
+        Point new_point = SchematicUtil.roundSchemFrame(entry.peripherals.mousePos(), location);	
+        if (selection_type == 0) {
 				if (store_point != null) {
 					Point newpoint2 = SchematicUtil.schemToFrame(store_point, location);
 
-					g.drawLine((int) new_point.getX(), (int) new_point.getY(), (int) newpoint2.getX(),
-							(int) newpoint2.getY());
+					c.drawLine(new_point.getX(), new_point.getY(), newpoint2.getX(),
+							 newpoint2.getY(), Color.RED, 4);
 				}
-			} else {
+			} else if(selection_type==1) {
 				ImageAsset a = assets.get(selected_asset);
 				if (a != null) {
-					g.drawRect((int) new_point.getX(), (int) new_point.getY(),
-							(int) (a.size.getWidth() * AppConstants.PIXELS_PER_GRID()),
-							(int) (a.size.getHeight() * AppConstants.PIXELS_PER_GRID()));
+					c.drawRect(new_point.getX(), new_point.getY(),
+							(a.size.getWidth() * AppConstants.PIXELS_PER_GRID()),
+                             (a.size.getHeight() * AppConstants.PIXELS_PER_GRID()), Color.RED, 2);
+                    c.drawImage(a.source, new_point.getX(), new_point.getY(),
+                    (a.size.getWidth() * AppConstants.PIXELS_PER_GRID()),
+                     (a.size.getHeight() * AppConstants.PIXELS_PER_GRID()));
 				}
 			}
     }
