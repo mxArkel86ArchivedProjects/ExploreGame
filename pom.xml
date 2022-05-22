@@ -71,6 +71,10 @@
             </goals>
           </execution>
         </executions>
+        <configuration> 
+          <nativesTargetDir>target</nativesTargetDir>
+          <separateDirs>false</separateDirs>
+        </configuration> 
       </plugin>
     </plugins>
   </build>

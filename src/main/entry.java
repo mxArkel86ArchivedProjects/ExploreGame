@@ -42,6 +42,10 @@ public static void main(String[] args) {
 		// System.out.println("-----------------");
 		
 		System.setProperty("sun.java2d.opengl", "true");
+
+		//get library path
+		String libPath = System.getProperty("java.library.path");
+		System.out.println("libPath=" + libPath);
 		
 				// Transparent 16 x 16 pixel cursor image.
 		BufferedImage cursorImg = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
