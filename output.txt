@@ -1,9 +1,0 @@
--=-=-=-= output =-=-=-=-=-
-
-[collision]
-
-[walls]
-storage_device,62,45,0.000
-storage_device,62,45,0.000
-
-[tiles]

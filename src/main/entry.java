@@ -11,6 +11,8 @@ import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 //import net.java.games.input.Controller;
 
+import org.lwjgl.Sys;
+
 public class entry {
 public static JFrame frame;
 public static Application app;
@@ -34,6 +36,10 @@ public static void main(String[] args) {
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		
 		app.Init(w, h);
+
+		// System.out.println("-----------------");
+		// System.out.println("CLASSPATH=" + System.getProperty("java.class.path"));
+		// System.out.println("-----------------");
 		
 		System.setProperty("sun.java2d.opengl", "true");
 		
