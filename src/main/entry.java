@@ -41,7 +41,7 @@ public static void main(String[] args) {
 		// System.out.println("CLASSPATH=" + System.getProperty("java.class.path"));
 		// System.out.println("-----------------");
 		
-		System.setProperty("sun.java2d.opengl", "true");
+		System.setProperty("java.library.path", System.getProperty("java.library.path") + ":.");
 
 		//get library path
 		String libPath = System.getProperty("java.library.path");

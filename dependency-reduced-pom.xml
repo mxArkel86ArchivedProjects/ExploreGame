@@ -6,6 +6,7 @@
   <version>0.0.1-SNAPSHOT</version>
   <build>
     <sourceDirectory>src</sourceDirectory>
+    <outputDirectory>target</outputDirectory>
     <resources>
       <resource>
         <directory>resources</directory>
@@ -48,6 +49,17 @@
         </executions>
       </plugin>
       <plugin>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.1.0</version>
+        <configuration>
+          <archive>
+            <manifest>
+              <mainClass>main.entry</mainClass>
+            </manifest>
+          </archive>
+        </configuration>
+      </plugin>
+      <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
       </plugin>
@@ -71,7 +83,7 @@
           </execution>
         </executions>
         <configuration>
-          <nativesTargetDir>target</nativesTargetDir>
+          <nativesTargetDir>target/natives</nativesTargetDir>
           <separateDirs>false</separateDirs>
         </configuration>
       </plugin>

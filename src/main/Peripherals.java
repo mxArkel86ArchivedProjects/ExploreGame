@@ -32,7 +32,7 @@ public class Peripherals implements ComponentListener, KeyListener, MouseInputLi
 		int count = Controllers.getControllerCount();
 		for (int i = 0; i < count; i++) {
 			Controller c = Controllers.getController(i);
-			System.out.println("Controller=" + c.getName());
+			System.out.println("Controller(" + i + ")=" + c.getName());
 			for (int j = 0; j < c.getButtonCount(); j++) {
 				System.out.println("button(" + j + ")=" + c.getButtonName(j));
 			}

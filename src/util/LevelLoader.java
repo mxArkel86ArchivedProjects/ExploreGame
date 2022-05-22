@@ -59,7 +59,7 @@ public class LevelLoader {
 
         String category = "";
 
-        for (String ln : ResourceUtil.loadLines("/level.txt")) {
+        for (String ln : ResourceUtil.loadLines("/game_configs/level.txt")) {
 
             if (ln.startsWith("[")) {
                 category = ln.substring(1, ln.length() - 1);

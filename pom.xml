@@ -6,6 +6,7 @@
   <packaging>jar</packaging>
   <build>
     <sourceDirectory>src</sourceDirectory>
+    <outputDirectory>target</outputDirectory>
     <resources>
       <resource>
         <directory>resources</directory>
@@ -39,6 +40,12 @@
               <goal>shade</goal>
             </goals>
             <configuration>
+              <!-- <artifactSet>
+                <includes>
+                   <include>org.javatuples</include>
+                   <include>org.lwjgl</include>
+                </includes>
+            </artifactSet> -->
               <transformers>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                   <mainClass>main.entry</mainClass>
@@ -48,6 +55,19 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>  
+        <!-- Build an executable JAR -->  
+        <groupId>org.apache.maven.plugins</groupId>  
+        <artifactId>maven-jar-plugin</artifactId>  
+        <version>3.1.0</version>  
+        <configuration>  
+            <archive>  
+                <manifest>  
+                    <mainClass>main.entry</mainClass>  
+                </manifest>  
+            </archive>  
+        </configuration>  
+    </plugin>  
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
@@ -72,10 +92,11 @@
           </execution>
         </executions>
         <configuration> 
-          <nativesTargetDir>target</nativesTargetDir>
+          <nativesTargetDir>target/natives</nativesTargetDir>
           <separateDirs>false</separateDirs>
         </configuration> 
       </plugin>
+      
     </plugins>
   </build>
   <dependencies>
